@@ -3,12 +3,6 @@ from torch.nn import functional as F
 import torch.nn as nn
 
 
-# https://github.com/jramapuram/helpers/utils.py
-def randn(shape, cuda, mean=0, sigma=1, dtype='float32'):
-    shape = list(shape) if isinstance(shape, tuple) else shape
-    return type_map[dtype](cuda)(*shape).normal_(mean, sigma)
-
-
 # Reconstruction + KL divergence losses summed over all elements and batch
 # note the change of var order!
 def loss_bce_kld(x, recon_x, mu, logvar, data_dim):
@@ -22,8 +16,18 @@ def loss_bce_kld(x, recon_x, mu, logvar, data_dim):
 
     return BCE + KLD
 
+# Note switch x, recon_x
+def loss_rho_bce_kld(x, recon_x, mu, rho, logs, z_dim, data_dim):
 
-def reconstruction_example(model, data_loader, img_shape, use_cuda):
+    BCE = F.binary_cross_entropy(recon_x, x.view(-1, data_dim), reduction='sum')
+    ##
+    KLD = 0.5 * (torch.sum(mu.pow(2)) + - z_dim * logs - (z_dim - 1) * torch.log(1 - rho**2) + z_dim * (logs.exp() - 1))
+    KLD = torch.mean(KLD)
+
+    return BCE + KLD
+
+
+def reconstruction_example(model, use_rho, data_loader, img_shape, use_cuda):
 
     model.eval()
     img_shape = img_shape[1:]
@@ -32,7 +36,10 @@ def reconstruction_example(model, data_loader, img_shape, use_cuda):
 
     x, y = next(iter(data_loader))
     x = to_cuda(x) if use_cuda else x
-    x_hat, _, _ = model(x)
+    if use_rho:
+        x_hat, _, _, _ = model(x)
+    else:
+        x_hat, _, _ = model(x)
 
     x = x[:num_class].cpu().view(num_class * img_shape[0], img_shape[1])
     x_hat = x_hat[:num_class].cpu().view(num_class * img_shape[0], img_shape[1])
@@ -66,6 +73,12 @@ def init_weights(module):
         elif isinstance(m, nn.Sequential):
             for sub_mod in m:
                 init_weights(sub_mod)
+
+
+# https://github.com/jramapuram/helpers/utils.py
+def randn(shape, cuda, mean=0, sigma=1, dtype='float32'):
+    shape = list(shape) if isinstance(shape, tuple) else shape
+    return type_map[dtype](cuda)(*shape).normal_(mean, sigma)
 
 
 def type_tdouble(use_cuda=False):
