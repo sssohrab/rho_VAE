@@ -16,6 +16,7 @@
 [ ] Add the (lr) schedular and reduce on plateau
 [ ] Add early stopping again
 [ ] Add saving the best model according to the validation loss
+[ ] Add latent space visualization
 [ ] Make identifier for orchestration
 [ ] Add Killer VEA architecture
 [X] Add InfoVEA architecture
