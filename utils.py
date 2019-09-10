@@ -1,6 +1,7 @@
 import torch
 from torch.nn import functional as F
 import torch.nn as nn
+import numpy as np
 
 
 # Reconstruction + KL divergence losses summed over all elements and batch
@@ -15,6 +16,7 @@ def loss_bce_kld(x, recon_x, mu, logvar, data_dim):
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
     return BCE + KLD
+
 
 # Note switch x, recon_x
 def loss_rho_bce_kld(x, recon_x, mu, rho, logs, z_dim, data_dim):
@@ -95,6 +97,11 @@ def type_tint(use_cuda=False):
 
 def type_tlong(use_cuda=False):
     return torch.cuda.LongTensor if use_cuda else torch.LongTensor
+
+
+def conv_size(H_in, k_size, stride, padd, dil=1):
+    H_out = np.floor((H_in + 2 * padd - dil * (k_size - 1) - 1) / stride + 1)
+    return np.int(H_out)
 
 
 # https://github.com/jramapuram/helpers/utils.py
