@@ -8,6 +8,8 @@
 - [ ] Make identifier for orchestration
 - [ ] Add DCGAN encoder/decoder
 - [ ] Add Killer VEA architecture
+- [ ] Add InfoVEA architecture
+
 
 
 * Tests
