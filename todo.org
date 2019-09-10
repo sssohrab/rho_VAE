@@ -11,11 +11,14 @@
 
 * Code todo
 [ ] Make identifier for orchestration
-[ ] Add DCGAN encoder/decoder
+[X] Add DCGAN encoder/decoder
 [ ] Add Killer VEA architecture
 [ ] Add the (lr) schedular and reduce on plateau
 [ ] Add early stopping again
 [ ] Add saving the best model according to the validation loss
+[ ] Make identifier for orchestration
+[ ] Add Killer VEA architecture
+[X] Add InfoVEA architecture
 
 
 * Tests
@@ -25,6 +28,3 @@
 
 * Article
 [ ]
-
-
-
