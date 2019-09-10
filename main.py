@@ -13,7 +13,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from data import get_data
-from models import VanillaVAE, RhoVanillaVAE, INFO_VAE
+from models import VanillaVAE, RhoVanillaVAE, INFO_VAE, RHO_INFO_VAE
 
 from utils import loss_bce_kld, loss_rho_bce_kld, to_cuda, init_weights, reconstruction_example, generation_example
 
@@ -93,7 +93,7 @@ out_channels = args.out_channels
 
 # Model def
 if args.rho:
-    model = RhoVanillaVAE(data_dim, args.z_dim).to(device)
+    model = RHO_INFO_VAE(input_shape, out_channels, encoder_size, latent_size).to(device)
 else:
     model = INFO_VAE(input_shape, out_channels, encoder_size, latent_size).to(device)
 

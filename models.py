@@ -217,3 +217,99 @@ class INFO_VAE(nn.Module):
         mu_z = self.reparameterize(mu_z, std_z)
         x_hat = self.decode(mu_z)
         return x_hat, mu_z, std_z
+
+
+class RHO_DCGAN_Encoder(nn.Module):
+    def __init__(self, input_shape, out_channels, encoder_size, latent_size):
+        super(RHO_DCGAN_Encoder, self).__init__()
+
+        H_conv_out = conv_size(input_shape[-1], 4, 2, 1)
+        H_conv_out = conv_size(H_conv_out, 3, 1, 1)
+        H_conv_out = conv_size(H_conv_out, 4, 2, 1)
+        H_conv_out = conv_size(H_conv_out, 3, 1, 1)
+
+        convnet_out = np.int(H_conv_out * H_conv_out * out_channels * 2)
+
+        self.H_conv_out = H_conv_out
+
+        self.encoder = nn.ModuleList([
+            # in_channels, out_channels, kernel_size, stride=1, padding=0
+            ConvReluBatch(1, out_channels, 4, 2, padding=1),
+
+            ConvReluBatch(out_channels, out_channels, 3, 1, padding=1),
+            ConvReluBatch(out_channels, out_channels * 2, 4, 2, padding=1),
+            ConvReluBatch(out_channels * 2, out_channels * 2, 3, 1, padding=1),
+
+            BatchFlatten(),
+            nn.Linear(convnet_out, encoder_size)
+        ])
+
+        self.encoder_mu = nn.Linear(encoder_size, latent_size)
+
+        self.encoder_s = nn.Linear(encoder_size, 1)
+        self.encoder_rho = nn.Linear(encoder_size, 1)
+
+    def forward(self, x):
+        for layer in self.encoder:
+            x = layer(x)
+
+        mu = self.encoder_mu(x)
+        rho = torch.tanh(self.encoder_rho(x))
+        log_s = self.encoder_s(x)
+        log_s = torch.clamp(torch.sigmoid(log_s), min=0.01)
+        return mu, rho, log_s
+
+
+class RHO_DCGAN_Decoder(nn.Module):
+    def __init__(self, H_conv_out, out_channels, decoder_size, latent_size):
+        super(RHO_DCGAN_Decoder, self).__init__()
+        self.decoder = nn.ModuleList([
+            nn.Linear(latent_size, decoder_size),
+            nn.ReLU(),
+
+            nn.Linear(decoder_size, H_conv_out * H_conv_out * out_channels * 2),
+            nn.ReLU(),
+            BatchReshape((out_channels * 2, H_conv_out, H_conv_out, )),
+
+            ConvTrReluBatch(out_channels * 2, out_channels, 4, 2, padding=1),
+            ConvTrReluBatch(out_channels, out_channels, 3, 1, padding=1),
+            ConvTrReluBatch(out_channels, out_channels // 2, 4, 2, padding=1),
+
+            nn.ConvTranspose2d(out_channels // 2, 1, 3, 1, padding=1),
+            nn.Sigmoid()
+        ])
+
+    def forward(self, x):
+        for layer in self.decoder:
+            x = layer(x)
+        return x
+
+
+class RHO_INFO_VAE(nn.Module):
+    def __init__(self, input_shape, out_channels, encoder_size, latent_size):
+        super(RHO_INFO_VAE, self).__init__()
+        self.z_dim = latent_size
+        self.encoder = RHO_DCGAN_Encoder(input_shape, out_channels, encoder_size, latent_size)
+        self.decoder = RHO_DCGAN_Decoder(self.encoder.H_conv_out, out_channels, encoder_size, latent_size)
+
+    def encode(self, x):
+        mu_z, rho, log_s = self.encoder(x)
+        return mu_z, rho, log_s
+
+    def decode(self, z):
+        x_hat = self.decoder(z)
+        return x_hat
+
+    def reparameterize(self, mu_z, log_s, rho):
+        z_q = torch.randn_like(rho).view(-1, 1) * torch.sqrt(log_s.exp())
+        for j in range(1, self.z_dim):
+            addenum = z_q[:, -1].view(-1, 1) + torch.randn_like(rho).view(-1, 1) * torch.sqrt(log_s.exp())
+            z_q = torch.cat((z_q, addenum), 1)
+        z_q = z_q + mu_z
+        return z_q
+
+    def forward(self, x):
+        mu_z, rho, log_s = self.encode(x)
+        mu_z = self.reparameterize(mu_z, log_s, rho)
+        x_hat = self.decode(mu_z)
+        return x_hat, mu_z, rho, log_s
