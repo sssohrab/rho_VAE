@@ -1,0 +1,18 @@
+* Code fixes
+- [ ] Fix hacks
+- [ ] Expand the data loader
+- [ ] Fix the num_class, input_shape hack
+
+
+* Code todo
+- [ ] Make identifier for orchestration
+- [ ] Add DCGAN encoder/decoder
+- [ ] Add Killer VEA architecture
+
+
+* Tests
+- [ ] test cifar dataset
+
+
+* Article
+- [ ]
