@@ -1,0 +1,4 @@
+implementation/data/*
+implementation/.ipynb_checkpoints/*
+implementation/samples/rho_VAE/*
+implementation/samples/vanilla_VAE/*
