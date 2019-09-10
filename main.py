@@ -13,9 +13,9 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from data import get_data
-from models import VanillaVAE
+from models import VanillaVAE, RhoVanillaVAE
 
-from utils import loss_bce_kld, to_cuda, init_weights, reconstruction_example, generation_example
+from utils import loss_bce_kld, loss_rho_bce_kld, to_cuda, init_weights, reconstruction_example, generation_example
 
 mpl.use('Agg')
 
@@ -26,6 +26,9 @@ parser.add_argument('--uid', type=str, default='VVAE',
                     help='Staging identifier (default: Vanilla VAE)')
 
 # Model parameters
+parser.add_argument('--rho', action='store_true', default=True,
+                    help='Rho reparameterization (default: True')
+
 parser.add_argument('--z-dim', type=int, default=5, metavar='N',
                     help='VAE latent size (default: 20')
 
@@ -74,14 +77,17 @@ train_loader, test_loader, input_shape = get_data(args.dataset_name, args.batch_
 data_dim = np.prod(input_shape)
 
 # Model def
-model = VanillaVAE(data_dim, args.z_dim).to(device)
+if args.rho:
+    model = RhoVanillaVAE(data_dim, args.z_dim).to(device)
+else:
+    model = VanillaVAE(data_dim, args.z_dim).to(device)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
 # TODO init weights
 model.apply(init_weights)
 
 # Loss definition
-loss_fn = loss_bce_kld
+loss_fn = loss_rho_bce_kld if args.rho else loss_bce_kld
 
 # Set tensorboard
 log_dir = args.log_dir
@@ -99,9 +105,12 @@ def train_validate(model, loader, loss_fn, optimizer, train, use_cuda):
         if train:
             optimizer.zero_grad()
 
-        x_hat, mu, log_var = model(x)
-
-        loss = loss_fn(x, x_hat, mu, log_var, data_dim)
+        if args.rho:
+            x_hat, mu, rho, logs = model(x)
+            loss = loss_fn(x, x_hat, mu, rho, logs, args.z_dim, data_dim)
+        else:
+            x_hat, mu, log_var = model(x)
+            loss = loss_fn(x, x_hat, mu, log_var, data_dim)
         batch_loss += loss.item() / batch_size
 
         if train:
@@ -134,7 +143,7 @@ def execute_graph(model, train_loader, test_loader, loss_fn, optimizer, use_cuda
     logger.add_image('generation example', sample, epoch)
 
     # image reconstruction examples
-    comparison = reconstruction_example(model, test_loader, input_shape, use_cuda)
+    comparison = reconstruction_example(model, args.rho, test_loader, input_shape, use_cuda)
     comparison = comparison.detach()
     comparison = tvu.make_grid(comparison, normalize=False, scale_each=True)
     logger.add_image('reconstruction example', comparison, epoch)
