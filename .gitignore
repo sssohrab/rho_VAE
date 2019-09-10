@@ -124,3 +124,14 @@ ENV/
 # custom
 .datasets
 .models
+
+
+
+
+#  Sohrab
+paper/rho_VAE.aux
+paper/rho_VAE.bbl
+paper/rho_VAE.blg
+paper/rho_VAE.log
+paper/rho_VAE.out
+paper/rho_VAE.synctex.gz
