@@ -44,24 +44,24 @@ class ConvReluBatch(nn.Conv2d):
     def __init__(self, *args, **kwargs):
         super(ConvReluBatch, self).__init__(*args, **kwargs)
         batch_dim = self.weight.data.size(0)
-        self.rl = nn.ReLU()
+        self.relu = nn.ReLU()
         self.bn = nn.BatchNorm2d(batch_dim)
 
     def forward(self, x):
         x = super(ConvReluBatch, self).forward(x)
-        return self.bn(self.lr(x))
+        return self.bn(self.relu(x))
 
 
 class ConvTrReluBatch(nn.ConvTranspose2d):
     def __init__(self, *args, **kwargs):
         super(ConvTrReluBatch, self).__init__(*args, **kwargs)
         batch_dim = self.weight.data.size(1)
-        self.lr = nn.ReLU()
+        self.relu = nn.ReLU()
         self.bn = nn.BatchNorm2d(batch_dim)
 
     def forward(self, x):
         x = super(ConvTrReluBatch, self).forward(x)
-        return self.bn(self.lr(x))
+        return self.bn(self.relu(x))
 
 
 class VanillaVAE(nn.Module):

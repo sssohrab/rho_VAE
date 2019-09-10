@@ -13,7 +13,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from data import get_data
-from models import VanillaVAE, RhoVanillaVAE
+from models import VanillaVAE, RhoVanillaVAE, INFO_VAE
 
 from utils import loss_bce_kld, loss_rho_bce_kld, to_cuda, init_weights, reconstruction_example, generation_example
 
@@ -26,11 +26,18 @@ parser.add_argument('--uid', type=str, default='VVAE',
                     help='Staging identifier (default: Vanilla VAE)')
 
 # Model parameters
-parser.add_argument('--rho', action='store_true', default=True,
+parser.add_argument('--rho', action='store_true', default=False,
                     help='Rho reparameterization (default: True')
 
 parser.add_argument('--z-dim', type=int, default=5, metavar='N',
                     help='VAE latent size (default: 20')
+
+parser.add_argument('--out-channels', type=int, default=64, metavar='N',
+                    help='VAE 2D conv channel output (default: 64')
+
+parser.add_argument('--encoder-size', type=int, default=1024, metavar='N',
+                    help='VAE encoder size (default: 1024')
+
 
 # data loader parameters
 parser.add_argument('--dataset-name', type=str, default='mnist',
@@ -76,11 +83,21 @@ else:
 train_loader, test_loader, input_shape = get_data(args.dataset_name, args.batch_size)
 data_dim = np.prod(input_shape)
 
+# hack
+# input_shape = data_dim
+num_class = 10
+encoder_size = args.encoder_size
+decoder_size = args.encoder_size
+latent_size = args.z_dim
+out_channels = args.out_channels
+
 # Model def
 if args.rho:
     model = RhoVanillaVAE(data_dim, args.z_dim).to(device)
 else:
-    model = VanillaVAE(data_dim, args.z_dim).to(device)
+    model = INFO_VAE(input_shape, out_channels, encoder_size, latent_size).to(device)
+
+# Optimizer
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
 # TODO init weights
