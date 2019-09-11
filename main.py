@@ -150,12 +150,14 @@ def execute_graph(model, train_loader, test_loader, loss_fn, optimizer, use_cuda
     v_loss, v_kld_loss, v_bce_loss = train_validate(model, test_loader, loss_fn, optimizer, False, use_cuda)
 
     print('====> Epoch: {} Average Train loss: {:.4f}'.format(epoch, t_loss))
-    print('====> Epoch: {} Average Train loss: {:.4f}'.format(epoch, t_kld_loss))
-    print('====> Epoch: {} Average Train loss: {:.4f}'.format(epoch, t_bce_loss))
+    print('====> Epoch: {} Average KLD Train loss: {:.4f}'.format(epoch, t_kld_loss))
+    print('====> Epoch: {} Average BCE Train loss: {:.4f}'.format(epoch, t_bce_loss))
+
+    print('================================================================>')
 
     print('====> Epoch: {} Average Validation loss: {:.4f}'.format(epoch, v_loss))
-    print('====> Epoch: {} Average Validation loss: {:.4f}'.format(epoch, v_kld_loss))
-    print('====> Epoch: {} Average Validation loss: {:.4f}'.format(epoch, v_bce_loss))
+    print('====> Epoch: {} Average KLD Validation loss: {:.4f}'.format(epoch, v_kld_loss))
+    print('====> Epoch: {} Average BCE Validation loss: {:.4f}'.format(epoch, v_bce_loss))
 
     # Training and validation loss
     logger.add_scalar(log_dir + '/validation-loss', v_loss, epoch)
