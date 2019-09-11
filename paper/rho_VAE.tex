@@ -65,7 +65,7 @@ Department of Computer Science, University of Geneva, Switzerland \authorcr
 \maketitle
 
 \begin{abstract}
-We make a simple, but very effective plug-and-play alteration to the standard VAE. This is about parametrization of the sample-dependent latent space as a Gaussian distribution whose covariance matrix is constructed as an AR(1) process. We argue that this is a more natural prior for images to consider, as compared to the standard Gaussian distribution with a diagonal covariance matrix. While the standard diagonal parametrization consists of learning the mean vector, as well as the vector of diagonal values for each sample, our parametrization consists of the mean and two scalar values $s$ and $\rho$, where the first one is scaling the distribution and the second one is a measure of correlation among the latent dimensions. Therefore, the performance boost which we show in our experiments to be consistently noticeable cross different setups and variants of VAE models, comes at no cost, even reducing the number of covariance parameters from $d$, the dimensionality of the latent space to $2$.
+We make a simple, but very effective plug-and-play alteration to the standard VAE. This is about parametrization of the approximate posterior of the latent space as a Gaussian distribution whose covariance matrix is constructed as an AR(1) process. We argue that this is a more natural prior for images to consider, as compared to the standard Gaussian distribution with a diagonal covariance matrix. While the standard diagonal parametrization consists of learning the mean vector, as well as the vector of diagonal values for each sample, our parametrization consists of the mean and two scalar values $s$ and $\rho$, where the first one is scaling the distribution and the second one is a measure of correlation among the latent dimensions. Therefore, the performance boost which we show in our experiments to be consistently noticeable cross different setups and variants of VAE models, comes at no cost. We even reduce the number of covariance parameters from $d$, the dimensionality of the latent space to only $2$, yet providing a more flexible approximation of the intractable posterior.
 
 \end{abstract}
 
@@ -129,7 +129,7 @@ The literature around VAE is immense and still very active. Without aiming for a
 As categorized in \cite{tschannen2018recent}, VAE variants come in 3 categories.
  
 \section{The $\rho$-VAE}  \label{sec:proposed}
-We saw in section \ref{subsec:Vanilla_VAE} that two considerations limit the choices of approximate posterior: the need for a parametric Choleskiy factorization of its covariance matrix, as well as closed-form expression for the regularization term of (\eqref{eq:ELBO_VAE}), which basically requires the expression of log-determinant  of the covariance.
+We saw in section \ref{subsec:Vanilla_VAE} that two considerations limit the choices of approximate posterior: the need for a parametric Choleskiy factorization of its covariance matrix, as well as closed-form expression for the regularization term of (\ref{eq:vae_ELBO}), which basically requires the expression of log-determinant  of the covariance.
 
 In spite of the general consensus to pick $\mathrm{C}_{(\mathbf{s})}^{(i)} = \text{diag}\big( \mathbf{s}^{(i)} \big)$, which does not allow any correlation between the dimensions of the approximate posterior, this work proposes another parametrization that grants such freedom, satisfies the above-mentioned restrictions, and yet has less number of parameters.
 
@@ -175,7 +175,22 @@ As far as the reparametrization trick is concerned, the Choleskiy decomposition 
     \rho^{d} & \cdots  & \rho^3 \sqrt{1-\rho 2} & \rho^2 \sqrt{1-\rho 2}   & \rho \sqrt{1-\rho 2}   & \sqrt{1-\rho 2}
   \end{bmatrix},
 \end{equation}
-which can be used to generate the latent codes as $\mathbf{z}^{(i)} = \boldsymbol{\mu}^{(i)} + \tilde{\mathrm{C}}_{(\rho,s)}^{(i)} \boldsymbol{\epsilon}$. 
+which can be used to generate the latent codes as $\mathbf{z}^{(i)} = \boldsymbol{\mu}^{(i)} + \tilde{\mathrm{C}}_{(\rho,s)}^{(i)} \boldsymbol{\epsilon}$, which can be constructed also as the element-wise product of $\mathrm{C}_{(\rho,s)}$ with another highly structured matrix.
+
+Otherwise, if depending on the choice of the deep learning framework used, the realization of Toeplitz matrices is not straightforward, one can generate AR(1) samples directly from their definition, i.e., $\mathbf{z}^{(i)}[j] = \boldsymbol{\mu}^{(i)}[j] + \sqrt{s} \boldsymbol{\epsilon}[j] + \rho \mathbf{z}^{(i)}[j-1]$, for $1 < j \leqslant d$.
+
+Although it has less number of parameters than the standard choice and is hence more resilient towards over-fitting, this structure for the approximate posterior is more natural to consider, since correlation will somehow be represented. 
+
+Note that the fact that the prior is chosen as a white Gaussian by design, i.e., $p(\mathbf{z}) = \mathcal{N}(\mathbf{0}, \mathrm{I}_d)$, does not obviate the need for the per-sample approximate posterior to account for correlation. In fact, the per-sample posterior can be correlated, yet the aggregation of all samples can be a white Gaussian matching the prior.
+
+Furthermore, the need for correlation does not solely stem from the natural signals like images being correlated. As a matter of fact, another requirement for the success of the VAE-based generative modeling is the tightness of the bound in (\ref{eq:vae_ELBO}), which is controlled by $D_{\text{KL}}\big[ q_{\phi}(\mathbf{z}^{(i)}  | \mathbf{x}^{(i)}) || p_{\theta}(\mathbf{z}^{(i)} | \mathbf{x}^{(i)}) \big]$.
+
+In other words, to guarantee a successful training, the approximate posterior should have enough capacity to match the unknown and intractable posterior. In VAE models, however, it is usually only ``hoped'' that this will be the case. We believe (albeit without providing quantitative evidence), that accounting for correlation may help reduce this gap.
+
+Next we will show the effectiveness of our proposition. We show that the simple alterations to the standard approach, without the need for any sort of hyper-parameter tuning, will noticeably and consistently improve the performance under all variations considered and for all setups. 
+
+\section{Experiments} \label{sec:exp} 
+
 
 
 \bibliographystyle{plain}
