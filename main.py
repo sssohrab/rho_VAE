@@ -2,22 +2,15 @@ import argparse
 import numpy as np
 import torch
 import torch.utils.data
-from torch import nn, optim
-from torch.nn import functional as F
-from torchvision import datasets, transforms
-from torchvision.utils import save_image
-
+from torch import optim
 import torchvision.utils as tvu
 from tensorboardX import SummaryWriter
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 
 from data import get_data
-from models import VanillaVAE, RhoVanillaVAE, INFO_VAE, RHO_INFO_VAE
+from models import *
 
 from utils import loss_bce_kld, loss_rho_bce_kld, to_cuda, init_weights, reconstruction_example, generation_example
 
-mpl.use('Agg')
 
 parser = argparse.ArgumentParser(description='VAE example')
 
@@ -93,9 +86,15 @@ out_channels = args.out_channels
 
 # Model def
 if args.rho:
-    model = RHO_INFO_VAE(input_shape, out_channels, encoder_size, latent_size).to(device)
+    model = RHO_CNN_VAE(args.z_dim).to(device)
 else:
-    model = INFO_VAE(input_shape, out_channels, encoder_size, latent_size).to(device)
+    model = CNN_VAE(args.z_dim).to(device)
+
+# # Model def
+# if args.rho:
+#     model = RHO_INFO_VAE(input_shape, out_channels, encoder_size, latent_size).to(device)
+# else:
+#     model = INFO_VAE(input_shape, out_channels, encoder_size, latent_size).to(device)
 
 # Optimizer
 optimizer = optim.Adam(model.parameters(), lr=1e-3)

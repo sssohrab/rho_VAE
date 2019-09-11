@@ -315,22 +315,24 @@ class RHO_INFO_VAE(nn.Module):
         return x_hat, mu_z, rho, log_s
 
 
-class VAE_cnn(nn.Module):
+class CNN_VAE(nn.Module):
 
-    def __init__(self,dim_z):
-        super(VAE_cnn, self).__init__()
+    def __init__(self, z_dim):
+        super(CNN_VAE, self).__init__()
+        self.z_dim = z_dim
+
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=64, kernel_size=(4, 4), padding=(15, 15),
                                stride=2)  # This padding keeps the size of the image same, i.e. same padding
         self.conv2 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=(4, 4), padding=(15, 15), stride=2)
+
         self.fc11 = nn.Linear(in_features=128 * 28 * 28, out_features=1024)
-        self.fc12 = nn.Linear(in_features=1024, out_features=dim_z)
+        self.fc12 = nn.Linear(in_features=1024, out_features=z_dim)
 
         self.fc21 = nn.Linear(in_features=128 * 28 * 28, out_features=1024)
-        self.fc22 = nn.Linear(in_features=1024, out_features=dim_z)
+        self.fc22 = nn.Linear(in_features=1024, out_features=z_dim)
         self.relu = nn.ReLU()
 
-
-        self.fc1 = nn.Linear(in_features=dim_z, out_features=1024)
+        self.fc1 = nn.Linear(in_features=z_dim, out_features=1024)
         self.fc2 = nn.Linear(in_features=1024, out_features=7 * 7 * 128)
         self.conv_t1 = nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=4, padding=1, stride=2)
         self.conv_t2 = nn.ConvTranspose2d(in_channels=64, out_channels=1, kernel_size=4, padding=1, stride=2)
@@ -348,6 +350,7 @@ class VAE_cnn(nn.Module):
         logvar = self.fc22(logvar)
 
         return mu, logvar
+
     def reparameterize(self, mu, logvar):
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
@@ -358,7 +361,7 @@ class VAE_cnn(nn.Module):
         x = F.elu(self.fc2(x))
         x = x.view(-1, 128, 7, 7)
         x = F.relu(self.conv_t1(x))
-        x = F.sigmoid(self.conv_t2(x))
+        x = torch.sigmoid(self.conv_t2(x))
 
         return x.view(-1, 784)
 
@@ -367,3 +370,70 @@ class VAE_cnn(nn.Module):
         z = self.reparameterize(mu, logvar)
 
         return self.decode(z), mu, logvar
+
+
+class RHO_CNN_VAE(nn.Module):
+
+    def __init__(self, z_dim):
+        super(RHO_CNN_VAE, self).__init__()
+        self.z_dim = z_dim
+
+        self.conv1 = nn.Conv2d(in_channels=1, out_channels=64, kernel_size=(4, 4), padding=(15, 15), stride=2)  # This padding keeps the size of the image same, i.e. same padding
+        self.conv2 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=(4, 4), padding=(15, 15), stride=2)
+
+        self.fc_mu_1 = nn.Linear(in_features=128 * 28 * 28, out_features=1024)
+        self.fc_mu_2 = nn.Linear(in_features=1024, out_features=self.z_dim)
+
+        self.fc_logs_1 = nn.Linear(in_features=128 * 28 * 28, out_features=1024)
+        self.fc_logs_2 = nn.Linear(in_features=1024, out_features=1)
+
+        self.fc_rho_1 = nn.Linear(in_features=128 * 28 * 28, out_features=1024)
+        self.fc_rho_2 = nn.Linear(in_features=1024, out_features=1)
+        self.relu = nn.ReLU()
+
+        self.fc1 = nn.Linear(in_features=self.z_dim, out_features=1024)
+        self.fc2 = nn.Linear(in_features=1024, out_features=7 * 7 * 128)
+        self.conv_t1 = nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=4, padding=1, stride=2)
+        self.conv_t2 = nn.ConvTranspose2d(in_channels=64, out_channels=1, kernel_size=4, padding=1, stride=2)
+
+    def encode(self, x):
+        # General encoder block
+        x = x.view(-1, 1, 28, 28)
+        x = F.elu(self.conv1(x))
+        x = F.elu(self.conv2(x))
+        x = x.view(-1, 128 * 28 * 28)
+
+        mu = F.elu(self.fc_mu_1(x))
+        mu = self.fc_mu_2(mu)
+
+        log_s = F.elu(self.fc_logs_1(x))
+        log_s = self.fc_logs_2(log_s)
+
+        rho = F.elu(self.fc_rho_1(x))
+        rho = torch.tanh(self.fc_rho_2(rho))
+
+        return mu, rho, log_s
+
+    def reparameterize(self, mu, rho, logs):
+
+        z_q = torch.randn_like(rho).view(-1, 1) * torch.sqrt(logs.exp())
+        for j in range(1, self.z_dim):
+            addenum = z_q[:, -1].view(-1, 1) + torch.randn_like(rho).view(-1, 1) * torch.sqrt(logs.exp())
+            z_q = torch.cat((z_q, addenum), 1)
+        z_q = z_q + mu
+        return z_q
+
+    def decode(self, z):
+        x = F.elu(self.fc1(z))
+        x = F.elu(self.fc2(x))
+        x = x.view(-1, 128, 7, 7)
+        x = F.relu(self.conv_t1(x))
+        x = torch.sigmoid(self.conv_t2(x))
+
+        return x.view(-1, 784)
+
+    def forward(self, x):
+        mu, rho, log_s = self.encode(x.view(-1, 784))
+        z = self.reparameterize(mu, rho, log_s)
+
+        return self.decode(z), mu, rho, log_s
