@@ -92,16 +92,16 @@ latent_size = args.z_dim
 out_channels = args.out_channels
 
 # Model def
-if args.rho:
-    model = RHO_CNN_VAE(args.z_dim).to(device)
-else:
-    model = CNN_VAE(args.z_dim).to(device)
+# if args.rho:
+#     model = RHO_CNN_VAE(args.z_dim).to(device)
+# else:
+#     model = CNN_VAE(args.z_dim).to(device)
 
 # # Model def
-# if args.rho:
-#     model = RHO_INFO_VAE(input_shape, out_channels, encoder_size, latent_size).to(device)
-# else:
-#     model = INFO_VAE(input_shape, out_channels, encoder_size, latent_size).to(device)
+if args.rho:
+    model = RHO_INFO_VAE(input_shape, out_channels, encoder_size, latent_size).to(device)
+else:
+    model = INFO_VAE(input_shape, out_channels, encoder_size, latent_size).to(device)
 
 # Optimizer
 optimizer = optim.Adam(model.parameters(), lr=1e-3)

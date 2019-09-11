@@ -165,8 +165,8 @@ class DCGAN_Encoder(nn.Module):
 
         mu = self.encoder_mu(x)
         std = self.encoder_std(x)
-        std = torch.clamp(torch.sigmoid(std), min=0.01)
-        return mu, std
+        log_var = torch.log(torch.clamp(torch.sigmoid(std), min=0.01))
+        return mu, log_var
 
 
 class DCGAN_Decoder(nn.Module):
@@ -201,22 +201,22 @@ class INFO_VAE(nn.Module):
         self.decoder = DCGAN_Decoder(self.encoder.H_conv_out, out_channels, encoder_size, latent_size)
 
     def encode(self, x):
-        mu_z, std_z = self.encoder(x)
-        return mu_z, std_z
+        mu_z, log_var = self.encoder(x)
+        return mu_z, log_var
 
     def decode(self, z):
         x_hat = self.decoder(z)
         return x_hat
 
-    def reparameterize(self, mu_z, std_z):
-        eps = torch.randn_like(std_z)
-        return mu_z + eps * std_z
+    def reparameterize(self, mu_z, log_var):
+        eps = torch.randn_like(log_var)
+        return mu_z + eps * torch.exp(log_var)
 
     def forward(self, x):
-        mu_z, std_z = self.encode(x)
-        mu_z = self.reparameterize(mu_z, std_z)
+        mu_z, log_var = self.encode(x)
+        mu_z = self.reparameterize(mu_z, log_var)
         x_hat = self.decode(mu_z)
-        return x_hat, mu_z, std_z
+        return x_hat, mu_z, log_var
 
 
 class RHO_DCGAN_Encoder(nn.Module):
@@ -256,7 +256,7 @@ class RHO_DCGAN_Encoder(nn.Module):
         mu = self.encoder_mu(x)
         rho = torch.tanh(self.encoder_rho(x))
         log_s = self.encoder_s(x)
-        log_s = torch.clamp(torch.sigmoid(log_s), min=0.02)
+        log_s = torch.log(torch.clamp(torch.sigmoid(log_s), min=0.02))
         return mu, rho, log_s
 
 
