@@ -11,6 +11,7 @@
 
 
 * Code todo
+[ ] Find out why infovae/dcgan architecture doesn't give an advantage
 [X] Add Fashion MNIST to the data options
 [X] Make identifier for orchestration
 [X] Add DCGAN encoder/decoder
