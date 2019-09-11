@@ -313,3 +313,57 @@ class RHO_INFO_VAE(nn.Module):
         mu_z = self.reparameterize(mu_z, log_s, rho)
         x_hat = self.decode(mu_z)
         return x_hat, mu_z, rho, log_s
+
+
+class VAE_cnn(nn.Module):
+
+    def __init__(self,dim_z):
+        super(VAE_cnn, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels=1, out_channels=64, kernel_size=(4, 4), padding=(15, 15),
+                               stride=2)  # This padding keeps the size of the image same, i.e. same padding
+        self.conv2 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=(4, 4), padding=(15, 15), stride=2)
+        self.fc11 = nn.Linear(in_features=128 * 28 * 28, out_features=1024)
+        self.fc12 = nn.Linear(in_features=1024, out_features=dim_z)
+
+        self.fc21 = nn.Linear(in_features=128 * 28 * 28, out_features=1024)
+        self.fc22 = nn.Linear(in_features=1024, out_features=dim_z)
+        self.relu = nn.ReLU()
+
+
+        self.fc1 = nn.Linear(in_features=dim_z, out_features=1024)
+        self.fc2 = nn.Linear(in_features=1024, out_features=7 * 7 * 128)
+        self.conv_t1 = nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=4, padding=1, stride=2)
+        self.conv_t2 = nn.ConvTranspose2d(in_channels=64, out_channels=1, kernel_size=4, padding=1, stride=2)
+
+    def encode(self, x):
+        x = x.view(-1, 1, 28, 28)
+        x = F.elu(self.conv1(x))
+        x = F.elu(self.conv2(x))
+        x = x.view(-1, 128 * 28 * 28)
+
+        mu = F.elu(self.fc11(x))
+        mu = self.fc12(mu)
+
+        logvar = F.elu(self.fc21(x))
+        logvar = self.fc22(logvar)
+
+        return mu, logvar
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        return mu + std * eps
+
+    def decode(self, z):
+        x = F.elu(self.fc1(z))
+        x = F.elu(self.fc2(x))
+        x = x.view(-1, 128, 7, 7)
+        x = F.relu(self.conv_t1(x))
+        x = F.sigmoid(self.conv_t2(x))
+
+        return x.view(-1, 784)
+
+    def forward(self, x):
+        mu, logvar = self.encode(x.view(-1, 784))
+        z = self.reparameterize(mu, logvar)
+
+        return self.decode(z), mu, logvar
