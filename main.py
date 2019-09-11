@@ -124,10 +124,10 @@ def train_validate(model, loader, loss_fn, optimizer, train, use_cuda):
 
         if args.rho:
             x_hat, mu, rho, logs = model(x)
-            loss = loss_fn(x, x_hat, mu, rho, logs, args.z_dim, data_dim)
+            loss = loss_fn(x, x_hat, mu, rho, logs, args.z_dim)
         else:
             x_hat, mu, log_var = model(x)
-            loss = loss_fn(x, x_hat, mu, log_var, data_dim)
+            loss = loss_fn(x, x_hat, mu, log_var)
         batch_loss += loss.item() / batch_size
 
         if train:

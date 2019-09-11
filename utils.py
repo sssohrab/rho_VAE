@@ -6,8 +6,8 @@ import numpy as np
 
 # Reconstruction + KL divergence losses summed over all elements and batch
 # note the change of var order!
-def loss_bce_kld(x, recon_x, mu, logvar, data_dim):
-    BCE = F.binary_cross_entropy(recon_x, x.view(-1, data_dim), reduction='sum')
+def loss_bce_kld(x, recon_x, mu, logvar):
+    BCE = F.binary_cross_entropy(recon_x.view(-1, 1), x.view(-1, 1), reduction='sum')
 
     # see Appendix B from VAE paper:
     # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
@@ -19,9 +19,9 @@ def loss_bce_kld(x, recon_x, mu, logvar, data_dim):
 
 
 # Note switch x, recon_x
-def loss_rho_bce_kld(x, recon_x, mu, rho, logs, z_dim, data_dim):
+def loss_rho_bce_kld(x, recon_x, mu, rho, logs, z_dim):
 
-    BCE = F.binary_cross_entropy(recon_x, x.view(-1, data_dim), reduction='sum')
+    BCE = F.binary_cross_entropy(recon_x.view(-1, 1), x.view(-1, 1), reduction='sum')
     ##
     KLD = 0.5 * (torch.sum(mu.pow(2)) + - z_dim * logs - (z_dim - 1) * torch.log(1 - rho**2) + z_dim * (logs.exp() - 1))
     KLD = torch.mean(KLD)
