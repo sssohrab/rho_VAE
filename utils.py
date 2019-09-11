@@ -104,6 +104,9 @@ def conv_size(H_in, k_size, stride, padd, dil=1):
     return np.int(H_out)
 
 
+def save_checkpoint(state, filename):
+    torch.save(state, filename)
+
 # https://github.com/jramapuram/helpers/utils.py
 type_map = {
     'float32': type_tfloat,

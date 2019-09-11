@@ -1,33 +1,60 @@
-import torch
-import torch.nn as nn
-import torch.utils.data
+from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 
-def get_data(database_name, batch_size):
-    kwargs = {'num_workers': 8, 'pin_memory': True}
-    if database_name.lower() == 'mnist':
-        database_obj_train = datasets.MNIST('data/mnist', train=True, download=True,
-                                            transform=transforms.ToTensor())
-        database_obj_test = datasets.MNIST('data/mnist', train=False, transform=transforms.ToTensor())
+class Loader(object):
+    def __init__(self, dataset_ident, file_path, download, batch_size, data_transform, target_transform, use_cuda):
 
-    elif database_name.lower() == 'cifar10':
-        database_obj_train = datasets.CIFAR10('data/cifar10', train=True, download=True,
-                                              transform=transforms.ToTensor())
-        database_obj_test = datasets.CIFAR10('data/cifar10', train=False, transform=transforms.ToTensor())
+        kwargs = {'num_workers': 4, 'pin_memory': True} if use_cuda else {}
 
-    train_loader = torch.utils.data.DataLoader(database_obj_train,
-                                               batch_size=batch_size, shuffle=True, **kwargs)
-    test_loader = torch.utils.data.DataLoader(database_obj_test,
-                                              batch_size=batch_size, shuffle=True, **kwargs)
-    try:
-        N_train, image_x, image_y, num_channel = train_loader.dataset.data.shape
-        data_dim = image_x * image_y * num_channel
-        input_shape = (num_channel, image_x, image_y)
-    except:
-        N_train, image_x, image_y = train_loader.dataset.data.shape
-        data_dim = image_x * image_y
-        num_channel = 1
-        input_shape = (num_channel, image_x, image_y)
+        # set the dataset
+        # NOTE: will need a refractor one we load more different datasets, that require custom classes
+        loader_map = {
+            'mnist': datasets.MNIST,
+            'MNIST': datasets.MNIST,
+            'FashionMNIST': datasets.FashionMNIST,
+            'fashion': datasets.FashionMNIST
+        }
 
-    return train_loader, test_loader, input_shape
+        num_class = {
+            'mnist': 10,
+            'MNIST': 10,
+            'fashion': 10,
+            'FashionMNIST': 10
+        }
+
+        # Get the datasets
+        train_dataset, test_dataset = self.get_dataset(loader_map[dataset_ident], file_path, download,
+                                                       data_transform, target_transform)
+        # Set the loaders
+        self.train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, **kwargs)
+        self.test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, **kwargs)
+
+        # infer and set size, idea from:
+        # https://github.com/jramapuram/helpers/
+        tmp_batch, _ = self.train_loader.__iter__().__next__()
+        self.img_shape = list(tmp_batch.size())[1:]
+        self.num_class = num_class[dataset_ident]
+        self.batch_size = batch_size
+
+    @staticmethod
+    def get_dataset(dataset, file_path, download, data_transform, target_transform):
+
+        # Check for transform to be None, a single item, or a list
+        # None -> default to transform_list = [transforms.ToTensor()]
+        # single item -> list
+        if not data_transform:
+            data_transform = [transforms.ToTensor()]
+        elif not isinstance(data_transform, list):
+            data_transform = list(data_transform)
+
+        # Training and Validation datasets
+        train_dataset = dataset(file_path, train=True, download=download,
+                                transform=transforms.Compose(data_transform),
+                                target_transform=target_transform)
+
+        test_dataset = dataset(file_path, train=False, download=download,
+                               transform=transforms.Compose(data_transform),
+                               target_transform=target_transform)
+
+        return train_dataset, test_dataset

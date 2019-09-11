@@ -5,19 +5,20 @@
 
 
 * bugs DCGAN model
-[ ] UserWarning: Using a target size (torch.Size([128, 784])) that is different to the input size (torch.Size([128, 1, 28, 28])) is deprecated. Please ensure they have the same size.
+[X] UserWarning: Using a target size (torch.Size([128, 784])) that is different to the input size (torch.Size([128, 1, 28, 28])) is deprecated. Please ensure they have the same size.
   BCE = F.binary_cross_entropy(recon_x, x.view(-1, data_dim), reduction='sum')
 
 
 * Code todo
+[ ] Add Fashion MNIST to the data options
 [ ] Make identifier for orchestration
 [X] Add DCGAN encoder/decoder
 [ ] Add Killer VEA architecture
-[ ] Add the (lr) schedular and reduce on plateau
+[X] Add the (lr) schedular and reduce on plateau
 [ ] Add early stopping again
-[ ] Add saving the best model according to the validation loss
+[X] Add saving the best model according to the validation loss
 [ ] Add latent space visualization
-[ ] Make identifier for orchestration
+[X] Make identifier for orchestration
 [ ] Add Killer VEA architecture
 [X] Add InfoVEA architecture
 

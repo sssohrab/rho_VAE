@@ -3,20 +3,20 @@ import numpy as np
 import torch
 import torch.utils.data
 from torch import optim
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torchvision.utils as tvu
 from tensorboardX import SummaryWriter
 
-from data import get_data
+from data import *
 from models import *
-
-from utils import loss_bce_kld, loss_rho_bce_kld, to_cuda, init_weights, reconstruction_example, generation_example
+from utils import *
 
 
 parser = argparse.ArgumentParser(description='VAE example')
 
 # Task parameters
 parser.add_argument('--uid', type=str, default='VVAE',
-                    help='Staging identifier (default: Vanilla VAE)')
+                    help='Staging identifier (default: VVAE)')
 
 # Model parameters
 parser.add_argument('--rho', action='store_true', default=False,
@@ -73,7 +73,14 @@ else:
     device = torch.device("cpu")
 
 # Data loaders
-train_loader, test_loader, input_shape = get_data(args.dataset_name, args.batch_size)
+"""
+Get the dataloader
+"""
+data_dir = 'data'
+download_data = True
+data_loader = Loader(args.dataset_name, data_dir, download_data, args.batch_size, None, None, use_cuda)
+
+input_shape = data_loader.img_shape
 data_dim = np.prod(input_shape)
 
 # hack
@@ -98,6 +105,7 @@ else:
 
 # Optimizer
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
+scheduler = ReduceLROnPlateau(optimizer, 'min', verbose=True)
 
 # TODO init weights
 model.apply(init_weights)
@@ -107,7 +115,9 @@ loss_fn = loss_rho_bce_kld if args.rho else loss_bce_kld
 
 # Set tensorboard
 log_dir = args.log_dir
-logger = SummaryWriter()
+
+# dir, args.uid, timestamp
+logger = SummaryWriter(comment='_' + args.uid)
 
 
 def train_validate(model, loader, loss_fn, optimizer, train, use_cuda):
@@ -141,12 +151,12 @@ def train_validate(model, loader, loss_fn, optimizer, train, use_cuda):
     return batch_loss / (batch_idx + 1), batch_kld_loss / (batch_idx + 1), batch_bce_loss / (batch_idx + 1)
 
 
-def execute_graph(model, train_loader, test_loader, loss_fn, optimizer, use_cuda):
+def execute_graph(model, data_loader, loss_fn, optimizer, scheduler, use_cuda):
     # Training loss
-    t_loss, t_kld_loss, t_bce_loss = train_validate(model, train_loader, loss_fn, optimizer, True, use_cuda)
+    t_loss, t_kld_loss, t_bce_loss = train_validate(model, data_loader.train_loader, loss_fn, optimizer, True, use_cuda)
 
     # Validation loss
-    v_loss, v_kld_loss, v_bce_loss = train_validate(model, test_loader, loss_fn, optimizer, False, use_cuda)
+    v_loss, v_kld_loss, v_bce_loss = train_validate(model, data_loader.test_loader, loss_fn, optimizer, False, use_cuda)
 
     print('====> Epoch: {} Average Train loss: {:.4f}'.format(epoch, t_loss))
     print('====> Epoch: {} Average KLD Train loss: {:.4f}'.format(epoch, t_kld_loss))
@@ -163,22 +173,35 @@ def execute_graph(model, train_loader, test_loader, loss_fn, optimizer, use_cuda
     logger.add_scalar(log_dir + '/training-loss', t_loss, epoch)
 
     # image generation examples
-    sample = generation_example(model, args.z_dim, train_loader, input_shape, use_cuda)
+    sample = generation_example(model, args.z_dim, data_loader.train_loader, input_shape, use_cuda)
     sample = sample.detach()
     sample = tvu.make_grid(sample, normalize=False, scale_each=True)
     logger.add_image('generation example', sample, epoch)
 
     # image reconstruction examples
-    comparison = reconstruction_example(model, args.rho, test_loader, input_shape, use_cuda)
+    comparison = reconstruction_example(model, args.rho, data_loader.test_loader, input_shape, use_cuda)
     comparison = comparison.detach()
     comparison = tvu.make_grid(comparison, normalize=False, scale_each=True)
     logger.add_image('reconstruction example', comparison, epoch)
+
+    scheduler.step(v_loss)
 
     return v_loss
 
 
 num_epochs = args.epochs
+best_loss = np.inf
 
 # Main training and validation loop
 for epoch in range(1, num_epochs + 1):
-    _ = execute_graph(model, train_loader, test_loader, loss_fn, optimizer, use_cuda)
+    v_loss = execute_graph(model, data_loader, loss_fn, optimizer, scheduler, use_cuda)
+
+    if v_loss < best_loss:
+        best_loss = v_loss
+        print('Writing model checkpoint')
+        save_checkpoint({
+                        'epoch': epoch + 1,
+                        'state_dict': model.state_dict(),
+                        'val_loss': v_loss
+                        },
+                        'models/' + args.uid + '_{:04.4f}.pt'.format(v_loss))
