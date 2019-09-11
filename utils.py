@@ -15,7 +15,7 @@ def loss_bce_kld(x, recon_x, mu, logvar):
     # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
-    return BCE + KLD
+    return BCE + KLD, KLD, BCE
 
 
 # Note switch x, recon_x
@@ -26,7 +26,7 @@ def loss_rho_bce_kld(x, recon_x, mu, rho, logs, z_dim):
     KLD = 0.5 * (torch.sum(mu.pow(2)) + - z_dim * logs - (z_dim - 1) * torch.log(1 - rho**2) + z_dim * (logs.exp() - 1))
     KLD = torch.mean(KLD)
 
-    return BCE + KLD
+    return BCE + KLD, KLD, BCE
 
 
 def reconstruction_example(model, use_rho, data_loader, img_shape, use_cuda):

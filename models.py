@@ -256,7 +256,7 @@ class RHO_DCGAN_Encoder(nn.Module):
         mu = self.encoder_mu(x)
         rho = torch.tanh(self.encoder_rho(x))
         log_s = self.encoder_s(x)
-        log_s = torch.clamp(torch.sigmoid(log_s), min=0.01)
+        log_s = torch.clamp(torch.sigmoid(log_s), min=0.02)
         return mu, rho, log_s
 
 
