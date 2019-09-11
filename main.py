@@ -126,10 +126,10 @@ def train_validate(model, loader, loss_fn, optimizer, train, use_cuda):
 
         if args.rho:
             x_hat, mu, rho, logs = model(x)
-            loss, bce_loss, kld_loss = loss_fn(x, x_hat, mu, rho, logs, args.z_dim)
+            loss, kld_loss, bce_loss = loss_fn(x, x_hat, mu, rho, logs, args.z_dim)
         else:
             x_hat, mu, log_var = model(x)
-            loss, bce_loss, kld_loss = loss_fn(x, x_hat, mu, log_var)
+            loss, kld_loss, bce_loss = loss_fn(x, x_hat, mu, log_var)
 
         batch_loss += loss.item() / batch_size
         batch_kld_loss += kld_loss.item() / batch_size
@@ -153,11 +153,11 @@ def execute_graph(model, train_loader, test_loader, loss_fn, optimizer, use_cuda
     print('====> Epoch: {} Average KLD Train loss: {:.4f}'.format(epoch, t_kld_loss))
     print('====> Epoch: {} Average BCE Train loss: {:.4f}'.format(epoch, t_bce_loss))
 
-    print('================================================================>')
-
     print('====> Epoch: {} Average Validation loss: {:.4f}'.format(epoch, v_loss))
     print('====> Epoch: {} Average KLD Validation loss: {:.4f}'.format(epoch, v_kld_loss))
     print('====> Epoch: {} Average BCE Validation loss: {:.4f}'.format(epoch, v_bce_loss))
+
+    print('================================================================>')
 
     # Training and validation loss
     logger.add_scalar(log_dir + '/validation-loss', v_loss, epoch)
