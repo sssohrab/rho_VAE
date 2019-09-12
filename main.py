@@ -1,5 +1,6 @@
 import argparse
 import numpy as np
+import os
 import torch
 import torch.utils.data
 from torch import optim
@@ -15,7 +16,7 @@ from utils import *
 parser = argparse.ArgumentParser(description='VAE example')
 
 # Task parameters
-parser.add_argument('--uid', type=str, default='VVAE',
+parser.add_argument('--uid', type=str, default='InfoVAE',
                     help='Staging identifier (default: VVAE)')
 
 # Model parameters
@@ -59,11 +60,15 @@ parser.add_argument('--no-cuda', action='store_true', default=False,
 parser.add_argument('--seed', type=int, default=1,
                     help='Seed for numpy and pytorch (default: None')
 
+parser.add_argument('--n_gpu', type=int, default=2)
+
+
 
 args = parser.parse_args()
 
 # Set cuda
 use_cuda = not args.no_cuda and torch.cuda.is_available()
+os.environ["CUDA_VISIBLE_DEVICES"] = str(args.n_gpu)
 
 
 torch.manual_seed(args.seed)
@@ -117,6 +122,8 @@ loss_fn = loss_rho_bce_kld if args.rho else loss_bce_kld
 log_dir = args.log_dir
 
 # dir, args.uid, timestamp
+if args.rho:
+    args.uid = args.uid + '_rho'
 logger = SummaryWriter(comment='_' + args.uid)
 
 
