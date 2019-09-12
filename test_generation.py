@@ -107,6 +107,6 @@ model_map = {
 model = model_map[args.uid].to(device)
 loaded_model = torch.load('models/' + args.uid + args.dataset_name + '.pt')
 model.load_state_dict(loaded_model['state_dict'])
-sample = generation_example(model, args.z_dim, data_loader.train_loader, input_shape, num_class, use_cuda)
+sample = generation_example(model, args.z_dim, data_loader.train_loader, input_shape, num_class - 2, use_cuda)
 sample = sample.detach()
 save_image(sample, 'output/generation_{}_{}.png'.format(args.uid, args.dataset_name))
