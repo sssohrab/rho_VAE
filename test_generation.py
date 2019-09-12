@@ -4,8 +4,6 @@ import os
 import torch.utils.data
 from torchvision.utils import save_image
 
-
-
 from data import *
 from models import *
 from utils import *
@@ -20,10 +18,8 @@ parser.add_argument('--uid', type=str, default='InfoVAE',
 parser.add_argument('--rho', action='store_true', default=False,
                     help='Rho reparam (default: False')
 
-# Model parameters
-
 parser.add_argument('--z-dim', type=int, default=10, metavar='N',
-                    help='VAE latent size (default: 20')
+                    help='VAE latent size (default: 10')
 
 parser.add_argument('--out-channels', type=int, default=64, metavar='N',
                     help='VAE 2D conv channel output (default: 64')
@@ -31,21 +27,12 @@ parser.add_argument('--out-channels', type=int, default=64, metavar='N',
 parser.add_argument('--encoder-size', type=int, default=1024, metavar='N',
                     help='VAE encoder size (default: 1024')
 
-
 # data loader parameters
 parser.add_argument('--dataset-name', type=str, default='mnist',
                     help='Name of dataset (default: MNIST')
+
 parser.add_argument('--batch-size', type=int, default=128, metavar='N',
                     help='input training batch-size')
-
-
-# Optimizer
-parser.add_argument('--epochs', type=int, default=10, metavar='N',
-                    help='number of training epochs')
-
-parser.add_argument('--lr', type=float, default=1e-4,
-                    help='Learning rate (default: 1e-4')
-
 
 # Log directory
 parser.add_argument('--log-dir', type=str, default='runs',
@@ -75,6 +62,8 @@ if use_cuda:
 else:
     device = torch.device("cpu")
 
+
+print("Running {} on dataset {}".format(args.uid, args.dataset_name))
 
 # Data loaders
 """
@@ -120,7 +109,4 @@ loaded_model = torch.load('models/' + args.uid + args.dataset_name + '.pt')
 model.load_state_dict(loaded_model['state_dict'])
 sample = generation_example(model, args.z_dim, data_loader.train_loader, input_shape, num_class, use_cuda)
 sample = sample.detach()
-save_image(sample,
-               'Figs/generation_{}_{}.png'.format(args.uid, args.dataset_name))
-
-
+save_image(sample, 'output/generation_{}_{}.png'.format(args.uid, args.dataset_name))

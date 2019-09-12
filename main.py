@@ -26,7 +26,7 @@ parser.add_argument('--rho', action='store_true', default=False,
 # Model parameters
 
 parser.add_argument('--z-dim', type=int, default=10, metavar='N',
-                    help='VAE latent size (default: 20')
+                    help='VAE latent size (default: 10')
 
 parser.add_argument('--out-channels', type=int, default=64, metavar='N',
                     help='VAE 2D conv channel output (default: 64')
@@ -38,6 +38,7 @@ parser.add_argument('--encoder-size', type=int, default=1024, metavar='N',
 # data loader parameters
 parser.add_argument('--dataset-name', type=str, default='mnist',
                     help='Name of dataset (default: MNIST')
+
 parser.add_argument('--batch-size', type=int, default=128, metavar='N',
                     help='input training batch-size')
 
