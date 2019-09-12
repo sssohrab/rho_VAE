@@ -90,7 +90,7 @@ data_dim = np.prod(input_shape)
 
 # hack
 # input_shape = data_dim
-num_class = 10
+num_class = data_loader.num_class
 encoder_size = args.encoder_size
 decoder_size = args.encoder_size
 latent_size = args.z_dim
@@ -180,13 +180,13 @@ def execute_graph(model, data_loader, loss_fn, optimizer, scheduler, use_cuda):
     logger.add_scalar(log_dir + '/training-loss', t_loss, epoch)
 
     # image generation examples
-    sample = generation_example(model, args.z_dim, data_loader.train_loader, input_shape, use_cuda)
+    sample = generation_example(model, args.z_dim, data_loader.train_loader, input_shape, num_class, use_cuda)
     sample = sample.detach()
     sample = tvu.make_grid(sample, normalize=False, scale_each=True)
     logger.add_image('generation example', sample, epoch)
 
     # image reconstruction examples
-    comparison = reconstruction_example(model, args.rho, data_loader.test_loader, input_shape, use_cuda)
+    comparison = reconstruction_example(model, args.rho, data_loader.test_loader, input_shape, num_class, use_cuda)
     comparison = comparison.detach()
     comparison = tvu.make_grid(comparison, normalize=False, scale_each=True)
     logger.add_image('reconstruction example', comparison, epoch)

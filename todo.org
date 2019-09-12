@@ -5,7 +5,8 @@
 
 
 * bugs DCGAN model
-[ ] Fix fashion MNIST, NaN on BCE
+[ ] Fix num class again, pass, the parameter nicely
+[X] Fix fashion MNIST, NaN on BCE
 [X] UserWarning: Using a target size (torch.Size([128, 784])) that is different to the input size (torch.Size([128, 1, 28, 28])) is deprecated. Please ensure they have the same size.
   BCE = F.binary_cross_entropy(recon_x, x.view(-1, data_dim), reduction='sum')
 
@@ -23,7 +24,7 @@
 [X] Make identifier for orchestration
 [ ] Add Killer VEA architecture
 [X] Add InfoVEA architecture
-[ ] Add beta vae architecture
+[X] Add beta vae architecture
 [ ] Add chair dataset to loaders
 
 

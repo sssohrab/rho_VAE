@@ -29,12 +29,10 @@ def loss_rho_bce_kld(x, recon_x, mu, rho, logs, z_dim):
     return BCE + KLD, KLD, BCE
 
 
-def reconstruction_example(model, use_rho, data_loader, img_shape, use_cuda):
+def reconstruction_example(model, use_rho, data_loader, img_shape, num_class, use_cuda):
 
     model.eval()
     img_shape = img_shape[1:]
-    # hack
-    num_class = 10
 
     x, y = next(iter(data_loader))
     x = to_cuda(x) if use_cuda else x
@@ -49,9 +47,7 @@ def reconstruction_example(model, use_rho, data_loader, img_shape, use_cuda):
     return comparison
 
 
-def generation_example(model, latent_size, data_loader, img_shape, use_cuda):
-    # nasty hack
-    num_class = 10
+def generation_example(model, latent_size, data_loader, img_shape, num_class, use_cuda):
     img_shape = img_shape[1:]
 
     draw = randn((num_class, latent_size), use_cuda)
