@@ -8,6 +8,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torchvision.utils as tvu
 from tensorboardX import SummaryWriter
 
+
 from data import *
 from models import *
 from utils import *
@@ -15,15 +16,16 @@ from utils import *
 
 parser = argparse.ArgumentParser(description='VAE example')
 
-# Task parameters
+# Task parametersm and model name
 parser.add_argument('--uid', type=str, default='InfoVAE',
                     help='Staging identifier (default: VVAE)')
 
-# Model parameters
 parser.add_argument('--rho', action='store_true', default=False,
-                    help='Rho reparameterization (default: True')
+                    help='Rho reparam (default: False')
 
-parser.add_argument('--z-dim', type=int, default=5, metavar='N',
+# Model parameters
+
+parser.add_argument('--z-dim', type=int, default=10, metavar='N',
                     help='VAE latent size (default: 20')
 
 parser.add_argument('--out-channels', type=int, default=64, metavar='N',
@@ -63,7 +65,6 @@ parser.add_argument('--seed', type=int, default=1,
 parser.add_argument('--n_gpu', type=int, default=2)
 
 
-
 args = parser.parse_args()
 
 # Set cuda
@@ -77,36 +78,48 @@ if use_cuda:
 else:
     device = torch.device("cpu")
 
+
 # Data loaders
 """
 Get the dataloader
 """
 data_dir = 'data'
 download_data = True
-data_loader = Loader(args.dataset_name, data_dir, download_data, args.batch_size, None, None, use_cuda)
+
+# do ugly if
+if args.uid == 'BETAVAE' or args.uid == 'RHO_BETAVAE':
+    transform = [transforms.Resize((64, 64)), transforms.ToTensor()]
+else:
+    transform = None
+
+data_loader = Loader(args.dataset_name, data_dir, download_data, args.batch_size, transform, None, use_cuda)
 
 input_shape = data_loader.img_shape
 data_dim = np.prod(input_shape)
+input_channels = input_shape[0]
 
 # hack
 # input_shape = data_dim
 num_class = data_loader.num_class
 encoder_size = args.encoder_size
 decoder_size = args.encoder_size
-latent_size = args.z_dim
+z_dim = args.z_dim
 out_channels = args.out_channels
 
-# Model def
-# if args.rho:
-#     model = RHO_CNN_VAE(args.z_dim).to(device)
-# else:
-#     model = CNN_VAE(args.z_dim).to(device)
+# Set the model
+model_map = {
+    'VanillaVAE': VanillaVAE(data_dim, z_dim),
+    'RHO_VanillaVAE': RHO_VanillaVAE(data_dim, z_dim),
+    'INFO_VAE': INFO_VAE(input_shape, out_channels, encoder_size, z_dim),
+    'RHO_INFO_VAE': RHO_INFO_VAE(input_shape, out_channels, encoder_size, z_dim),
+    'CNN_VAE': CNN_VAE(input_channels, z_dim),
+    'RHO_CNN_VAE': RHO_CNN_VAE(input_channels, z_dim),
+    'BETAVAE': BETAVAE(input_channels, z_dim),
+    'RHO_BETAVAE': RHO_BETAVAE(input_channels, z_dim)
+}
 
-# # Model def
-if args.rho:
-    model = RHO_INFO_VAE(input_shape, out_channels, encoder_size, latent_size).to(device)
-else:
-    model = INFO_VAE(input_shape, out_channels, encoder_size, latent_size).to(device)
+
+model = model_map[args.uid].to(device)
 
 # Optimizer
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
@@ -122,9 +135,7 @@ loss_fn = loss_rho_bce_kld if args.rho else loss_bce_kld
 log_dir = args.log_dir
 
 # dir, args.uid, timestamp
-if args.rho:
-    args.uid = args.uid + '_rho'
-logger = SummaryWriter(comment='_' + args.uid)
+logger = SummaryWriter(comment='_' + args.uid + '_' + args.dataset_name)
 
 
 def train_validate(model, loader, loss_fn, optimizer, train, use_cuda):
@@ -145,6 +156,7 @@ def train_validate(model, loader, loss_fn, optimizer, train, use_cuda):
             loss, kld_loss, bce_loss = loss_fn(x, x_hat, mu, rho, logs, args.z_dim)
         else:
             x_hat, mu, log_var = model(x)
+
             loss, kld_loss, bce_loss = loss_fn(x, x_hat, mu, log_var)
 
         batch_loss += loss.item() / batch_size
@@ -200,9 +212,11 @@ num_epochs = args.epochs
 best_loss = np.inf
 
 # Main training and validation loop
+val_losses = []
+
 for epoch in range(1, num_epochs + 1):
     v_loss = execute_graph(model, data_loader, loss_fn, optimizer, scheduler, use_cuda)
-
+    val_losses.append(v_loss)
     if v_loss < best_loss:
         best_loss = v_loss
         print('Writing model checkpoint')

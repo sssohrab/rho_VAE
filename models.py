@@ -115,9 +115,9 @@ class VanillaVAE(nn.Module):
         return self.decode(z), mu, logvar
 
 
-class RhoVanillaVAE(nn.Module):
+class RHO_VanillaVAE(nn.Module):
     def __init__(self, data_dim, z_dim):
-        super(RhoVanillaVAE, self).__init__()
+        super(RHO_VanillaVAE, self).__init__()
         self.data_dim = data_dim
         self.z_dim = z_dim
 
@@ -337,11 +337,12 @@ class RHO_INFO_VAE(nn.Module):
 
 class CNN_VAE(nn.Module):
 
-    def __init__(self, z_dim):
+    def __init__(self, input_channels, z_dim):
         super(CNN_VAE, self).__init__()
+        self.input_channels = input_channels
         self.z_dim = z_dim
 
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=64, kernel_size=(4, 4), padding=(15, 15),
+        self.conv1 = nn.Conv2d(in_channels=self.input_channels, out_channels=64, kernel_size=(4, 4), padding=(15, 15),
                                stride=2)  # This padding keeps the size of the image same, i.e. same padding
         self.conv2 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=(4, 4), padding=(15, 15), stride=2)
 
@@ -355,7 +356,7 @@ class CNN_VAE(nn.Module):
         self.fc1 = nn.Linear(in_features=z_dim, out_features=1024)
         self.fc2 = nn.Linear(in_features=1024, out_features=7 * 7 * 128)
         self.conv_t1 = nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=4, padding=1, stride=2)
-        self.conv_t2 = nn.ConvTranspose2d(in_channels=64, out_channels=1, kernel_size=4, padding=1, stride=2)
+        self.conv_t2 = nn.ConvTranspose2d(in_channels=64, out_channels=self.input_channels, kernel_size=4, padding=1, stride=2)
 
     def encode(self, x):
         x = x.view(-1, 1, 28, 28)
@@ -394,11 +395,12 @@ class CNN_VAE(nn.Module):
 
 class RHO_CNN_VAE(nn.Module):
 
-    def __init__(self, z_dim):
+    def __init__(self, input_channels, z_dim):
         super(RHO_CNN_VAE, self).__init__()
+        self.input_channels = input_channels
         self.z_dim = z_dim
 
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=64, kernel_size=(4, 4), padding=(15, 15), stride=2)  # This padding keeps the size of the image same, i.e. same padding
+        self.conv1 = nn.Conv2d(in_channels=self.input_channels, out_channels=64, kernel_size=(4, 4), padding=(15, 15), stride=2)  # This padding keeps the size of the image same, i.e. same padding
         self.conv2 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=(4, 4), padding=(15, 15), stride=2)
 
         self.fc_mu_1 = nn.Linear(in_features=128 * 28 * 28, out_features=1024)
@@ -414,7 +416,7 @@ class RHO_CNN_VAE(nn.Module):
         self.fc1 = nn.Linear(in_features=self.z_dim, out_features=1024)
         self.fc2 = nn.Linear(in_features=1024, out_features=7 * 7 * 128)
         self.conv_t1 = nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=4, padding=1, stride=2)
-        self.conv_t2 = nn.ConvTranspose2d(in_channels=64, out_channels=1, kernel_size=4, padding=1, stride=2)
+        self.conv_t2 = nn.ConvTranspose2d(in_channels=64, out_channels=self.input_channels, kernel_size=4, padding=1, stride=2)
 
     def encode(self, x):
         # General encoder block
@@ -459,9 +461,9 @@ class RHO_CNN_VAE(nn.Module):
         return self.decode(z), mu, rho, log_s
 
 
-class BetaVAE(nn.Module):
+class BETAVAE(nn.Module):
     def __init__(self, input_channels, z_dim):
-        super(BetaVAE, self).__init__()
+        super(BETAVAE, self).__init__()
         self.input_channels = input_channels
         self.z_dim = z_dim
 
@@ -470,9 +472,56 @@ class BetaVAE(nn.Module):
             Conv2DRelu(32, 32, 4, 2, 1),
             Conv2DRelu(32, 64, 4, 2, 1),
             Conv2DRelu(64, 64, 4, 2, 1),
-            Conv2DRelu(64, 256, 4, 2, 1),
+            Conv2DRelu(64, 256, 4, 1),
             View((-1, 256 * 1 * 1)),
             nn.Linear(256, self.z_dim * 2)
+        )
+
+        self.decoder = nn.Sequential(
+            nn.Linear(z_dim, 256),
+            View((-1, 256, 1, 1)),
+            nn.ReLU(),
+            Conv2TRelu(256, 64, 4),
+            Conv2TRelu(64, 64, 4, 2, 1),
+            Conv2TRelu(64, 32, 4, 2, 1),
+            Conv2TRelu(32, 32, 4, 2, 1),
+            nn.ConvTranspose2d(32, self.input_channels, 4, 2, 1),
+        )
+
+    def encode(self, x):
+        return self.encoder(x)
+
+    def decode(self, x):
+        return torch.sigmoid(self.decoder(x))
+
+    def forward(self, x):
+        x = self.encode(x)
+        mu = x[:, :self.z_dim]
+        logvar = x[:, self.z_dim:]
+        z = self.reparameterize(mu, logvar)
+        x_hat = self.decode(z)
+        return x_hat, mu, logvar
+
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        return mu + std * eps
+
+
+class RHO_BETAVAE(nn.Module):
+    def __init__(self, input_channels, z_dim):
+        super(RHO_BETAVAE, self).__init__()
+        self.input_channels = input_channels
+        self.z_dim = z_dim
+
+        self.encoder = nn.Sequential(
+            Conv2DRelu(input_channels, 32, 4, 2, 1),
+            Conv2DRelu(32, 32, 4, 2, 1),
+            Conv2DRelu(32, 64, 4, 2, 1),
+            Conv2DRelu(64, 64, 4, 2, 1),
+            Conv2DRelu(64, 256, 4, 1),
+            View((-1, 256 * 1 * 1)),
+            nn.Linear(256, self.z_dim + 2)
         )
 
         self.decoder = nn.Sequential(
@@ -486,62 +535,23 @@ class BetaVAE(nn.Module):
             nn.ConvTranspose2d(32, self.input_channels, 4, 2, 1)
         )
 
-    def forward(self, x):
-        x = self.encoder(x)
-        mu = x[:, :self.z_dim]
-        logvar = x[:, self.z_dim:]
-        z = self.reparameterize(mu, logvar)
-        x_hat = self.decoder(z)
-        return x_hat, mu, logvar
+    def encode(self, x):
+        return self.encoder(x)
 
-    def reparametrize(mu, logvar):
-        std = torch.exp(0.5 * logvar)
-        eps = torch.randn_like(std)
-        return mu + std * eps
-
-
-class RhoBetaVAE(nn.Module):
-    def __init__(self, input_channels, z_dim):
-        super(RhoBetaVAE, self).__init__()
-        self.input_channels = input_channels
-        self.z_dim = z_dim
-
-        self.encoder = nn.Sequential(
-            Conv2DRelu(input_channels, 32, 4, 2, 1),
-            Conv2DRelu(32, 32, 4, 2, 1),
-            Conv2DRelu(32, 64, 4, 2, 1),
-            Conv2DRelu(64, 64, 4, 2, 1),
-            Conv2DRelu(64, 256, 4, 2, 1),
-            View((-1, 256 * 1 * 1)),
-            nn.Linear(256, self.z_dim * 2)
-        )
-
-        self.encoder_rho = nn.Linear(self.z_dim * 1, 1)
-        self.encoder_logs = nn.Linear(self.z_dim * 1, 1)
-
-        self.decoder = nn.Sequential(
-            nn.Linear(z_dim, 256),
-            View((-1, 256, 1, 1)),
-            nn.ReLU(),
-            Conv2TRelu(256, 64, 4),
-            Conv2TRelu(64, 64, 4, 2, 1),
-            Conv2TRelu(64, 32, 4, 2, 1),
-            Conv2TRelu(32, 32, 4, 2, 1),
-            nn.ConvTranspose2d(32, self.input_channels, 4, 2, 1),
-            # Not in original model
-            nn.Softmax()
-        )
+    def decode(self, x):
+        return torch.sigmoid(self.decoder(x))
 
     def forward(self, x):
-        x = self.encoder(x)
+        x = self.encode(x)
         mu = x[:, :self.z_dim]
 
-        rho = torch.tanh(self.encoder_rho(x[:, self.z_dim:]))
-        logs = self.encoder_logs(x[:, self.z_dim:])
+        rho = torch.tanh(x[:, self.z_dim:self.z_dim + 1])
+        logs = x[:, self.z_dim + 1:]
+        # print(logs.cpu().detach().numpy())
 
         z = self.reparameterize(mu, rho, logs)
-        x_hat = self.decoder(z)
-        return x_hat, rho, logs
+        x_hat = self.decode(z)
+        return x_hat, z, rho, logs
 
     def reparameterize(self, mu, rho, logs):
 
