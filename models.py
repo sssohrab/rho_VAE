@@ -157,15 +157,15 @@ class DCGAN_Encoder(nn.Module):
         ])
 
         self.encoder_mu = nn.Linear(encoder_size, latent_size)
-        self.encoder_std = nn.Linear(encoder_size, latent_size)
+        self.encoder_var = nn.Linear(encoder_size, latent_size)
 
     def forward(self, x):
         for layer in self.encoder:
             x = layer(x)
 
         mu = self.encoder_mu(x)
-        std = self.encoder_std(x)
-        log_var = torch.log(torch.clamp(torch.sigmoid(std), min=0.01))
+        var = self.encoder_var(x)
+        log_var = torch.log(torch.clamp(var, min=0.01))
         return mu, log_var
 
 
@@ -256,7 +256,7 @@ class RHO_DCGAN_Encoder(nn.Module):
         mu = self.encoder_mu(x)
         rho = torch.tanh(self.encoder_rho(x))
         log_s = self.encoder_s(x)
-        log_s = torch.log(torch.clamp(torch.sigmoid(log_s), min=0.02))
+        log_s = torch.log(torch.clamp(log_s, min=0.02))
         return mu, rho, log_s
 
 
