@@ -65,16 +65,24 @@ Department of Computer Science, University of Geneva, Switzerland \authorcr
 \maketitle
 
 \begin{abstract}
-We make a simple, but very effective plug-and-play alteration to the standard VAE. This is about parametrization of the approximate posterior of the latent space as a Gaussian distribution whose covariance matrix is constructed as an AR(1) process. We argue that this is a more natural prior for images to consider, as compared to the standard Gaussian distribution with a diagonal covariance matrix. While the standard diagonal parametrization consists of learning the mean vector, as well as the vector of diagonal values for each sample, our parametrization consists of the mean and two scalar values $s$ and $\rho$, where the first one is scaling the distribution and the second one is a measure of correlation among the latent dimensions. Therefore, the performance boost which we show in our experiments to be consistently noticeable cross different setups and variants of VAE models, comes at no cost. We even reduce the number of covariance parameters from $d$, the dimensionality of the latent space to only $2$, yet providing a more flexible approximation of the intractable posterior.
 
+
+ 
+We make a simple, but very effective alteration to the VAE model. This is about a drop-in replacement for the (sample-dependent) approximate posterior to change it from the standard white Gaussian with diagonal covariance to the first-order autoregressive Gaussian. We argue that this is a more reasonable choice to adopt for natural signals like images, as it does not force the existing correlation in the data to disappear in the posterior. Moreover, it allows more freedom for the approximate posterior to match the true posterior. This allows for the repararametrization trick, as well as the divergence term to still have closed-form expressions, obviating the need for its sample-based estimation. Although providing more freedom to adapt to correlated distributions, our parametrization has even less number of parameters than the diagonal covariance, as it requires only two scalars, $\rho$ and $s$, to characterize correlation and a scaling factor, respectively. As validated by the experiments, our proposition noticeably and consistently improves the quality of image generation in a plug-and-play manner, needing no further parameter tuning, and across all setups. The code to reproduce our experiments is available at \url{https://github.com/sssohrab/rho_VAE/}.
+ 
 \end{abstract}
 
 \section{Introduction}
-Arguably, one of the most successful approaches to representation and generative learning is that of ``Auto-encoding variational Bayes'' \cite{VAE}, a parametrization of the standard variational Bayes in the form of an autoencoder neural network with a recipe for end-to-end learning of its parameters, while providing effective approximation of the intractable posterior. This has then given rise to the very popular Variational AutoEncoder (VAE), a set of models
+Arguably, one of the most successful approaches to generative and representation learning is that of ``Auto-encoding variational Bayes'' \cite{VAE}. Considering a latent-based model for the data, where an underlying but hidden variations are assumed to be responsible for the creation of the observed data, this approach realizes the standard variational Bayes in the form of a neural network and offers a practical recipe for end-to-end learning of its parameters, while providing effective approximation of the intractable posterior. This has then given rise to the very popular Variational AutoEncoder (VAE), a set of models successful at generating images (e.g., see [] and [] among others), as well as learning useful representation without supervision(e.g., as in [] and []).
 
-bla bla
+Essentially, the VAE bridges the tasks of generation of the data from latent codes, with that of inferring the latent codes from the data as two parts of the same body, the decoder and the encoder of an autoencoder architecture, respectively. This requires an implicit statistical model for each of these parts.
 
-bla bla bla
+As for the decoder, the standard model is a white Gaussian distribution, centered on the latent codes when passed through the decoder. To provide higher capacity and hence matching better with natural images, this is then generalized to autoregressive models which bring about better performance, e.g., as in [], albeit adding to the computational burden. 
+
+
+The encoder part, however, is more delicate to treat. From one hand, it has to be realistic enough to match the true posterior and hence tighten the variational bound. From the other hand it should be kept simple to make the gradient-based optimization feasible. This latter requirement has multiple sides: Firstly, it is preferred to have a closed-form expression for the regularization of the posterior to push it closer to the prior. Secondly, since the link between the encoder and the decoder cannot be direct, as explicit generation of latent codes breaks the differentiability, the encoder should be parametrized such that it can be injected to the latent space through reparametrization trick.
+
+
 
 
 \section{The VAE models} \label{sec:VAE}
