@@ -235,3 +235,4 @@ y = np.array(val_losses).astype(float).reshape(-1)
 x = np.arange(len(val_losses))
 
 np.savetxt(fp + fname, np.transpose([x, y]), fmt='%8f', delimiter='   ')
+
