@@ -23,6 +23,8 @@
 [X] Make identifier for orchestration
 [ ] Add Killer VEA architecture
 [X] Add InfoVEA architecture
+[ ] Add beta vae architecture
+[ ] Add chair dataset to loaders
 
 
 * Tests
