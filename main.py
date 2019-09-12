@@ -225,7 +225,7 @@ for epoch in range(1, num_epochs + 1):
                         'state_dict': model.state_dict(),
                         'val_loss': v_loss
                         },
-                        'models/' + args.uid + args.dataset_name + '.pt')
+                        'models/' + args.uid + '_' + args.dataset_name + '.pt')
 
 # Write out data to dat file
 fp = 'graphs/'
