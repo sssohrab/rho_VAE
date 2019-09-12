@@ -226,3 +226,12 @@ for epoch in range(1, num_epochs + 1):
                         'val_loss': v_loss
                         },
                         'models/' + args.uid + '_{:04.4f}.pt'.format(v_loss))
+
+# Write out data to dat file
+fp = 'graphs/'
+fname = args.uid + '_' + args.dataset_name + '.dat'
+
+y = np.array(val_losses).astype(float).reshape(-1)
+x = np.arange(len(val_losses))
+
+np.savetxt(fp + fname, np.transpose([x, y]), fmt='%8f', delimiter='   ')
