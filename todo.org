@@ -26,6 +26,8 @@
 [X] Add InfoVEA architecture
 [X] Add beta vae architecture
 [ ] Add chair dataset to loaders
+[ ] Integrate visdom again
+[ ] Better orchestration
 
 
 * Tests
