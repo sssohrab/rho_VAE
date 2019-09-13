@@ -136,3 +136,11 @@ paper/rho_VAE.blg
 paper/rho_VAE.log
 paper/rho_VAE.out
 paper/rho_VAE.synctex.gz
+paper/figs/curves/*[!.pdf]
+paper/figs/curves/dat
+
+
+notebooks/data/*
+notebooks/.ipynb_checkpoints
+notebooks/samples/vanilla_VAE/*
+notebooks/samples/rho_VAE/*
