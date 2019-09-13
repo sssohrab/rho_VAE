@@ -28,6 +28,10 @@
 \usepackage{nicefrac}       % compact symbols for 1/2, etc.
 \usepackage{microtype}      % microtypography
 \usepackage{authblk}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{caption}
+
 
 \title{$\rho$-VAE: \\Autoregressive parametrization of the VAE encoder}
 
@@ -73,30 +77,34 @@ We make a simple, but very effective alteration to the VAE model. This is about 
 \end{abstract}
 
 \section{Introduction}
-Arguably, one of the most successful approaches to generative and representation learning is that of ``Auto-encoding variational Bayes'' \cite{VAE}. Considering a latent-based model for the data, where an underlying but hidden variations are assumed to be responsible for the creation of the observed data, this approach realizes the standard variational Bayes in the form of a neural network and offers a practical recipe for end-to-end learning of its parameters, while providing effective approximation of the intractable posterior. This has then given rise to the very popular Variational AutoEncoder (VAE), a set of models successful at generating images (e.g., see [] and [] among others), as well as learning useful representation without supervision(e.g., as in [] and []).
+Arguably, one of the most successful approaches to generative and representation learning is that of ``Auto-encoding variational Bayes'' \cite{VAE}. Considering a latent-based model for the data, where an underlying but hidden variations are assumed to be responsible for the creation of the observed data, this approach realizes the standard variational Bayes in the form of a neural network and offers a practical recipe for end-to-end learning of its parameters, while providing effective approximation of the intractable posterior. This has then given rise to the very popular Variational AutoEncoder (VAE), a set of models successful at generating high quality images (e.g., see \cite{dai2019diagnosing}, \cite{rezende14} , \cite{LossyVAE} and \cite{PixelVAE} among others), as well as learning useful representation with little or no supervision (e.g., as in \cite{kingma2014semi}).
 
-Essentially, the VAE bridges the tasks of generation of the data from latent codes, with that of inferring the latent codes from the data as two parts of the same body, the decoder and the encoder of an autoencoder architecture, respectively. This requires an implicit statistical model for each of these parts.
+Essentially, the VAE bridges the tasks of generation of the data from latent codes, with that of inferring the latent codes from the data as two parts of the same body: the decoder and the encoder of an autoencoder architecture, respectively. This requires an implicit statistical model for each of these parts.
 
-As for the decoder, the standard model is a white Gaussian distribution, centered on the latent codes when passed through the decoder. To provide higher capacity and hence matching better with natural images, this is then generalized to autoregressive models which bring about better performance, e.g., as in [], albeit adding to the computational burden. 
+As for the decoder, the standard model is a white Gaussian distribution, centered on the latent codes when passed through the decoder. To provide higher capacity and hence matching better with natural images, this is then generalized to autoregressive models which bring about better performance, e.g., as in \cite{FlowVAE, gulrajani2016pixelvae, lucas2018auxiliary}, albeit adding to the computational burden. 
 
+%The encoder part, however, is more delicate to treat with, since from one hand, it has to be realistic enough to match the true posterior and hence tighten the variational bound, as much as possible. From the other hand it should be kept simple to make the gradient-based optimization feasible. This latter requirement has multiple sides: Firstly, it is preferred to have a closed-form expression for the regularization of the posterior to push it closer to the prior. Secondly, since the link between the encoder and the decoder cannot be direct, as explicit generation of latent codes is a non-diferantiable operation, the encoder should be parametrized such that it can be injected to the latent space through the reparametrization trick.
+%
+%The standard solution is then proposed
 
-The encoder part, however, is more delicate to treat. From one hand, it has to be realistic enough to match the true posterior and hence tighten the variational bound. From the other hand it should be kept simple to make the gradient-based optimization feasible. This latter requirement has multiple sides: Firstly, it is preferred to have a closed-form expression for the regularization of the posterior to push it closer to the prior. Secondly, since the link between the encoder and the decoder cannot be direct, as explicit generation of latent codes breaks the differentiability, the encoder should be parametrized such that it can be injected to the latent space through reparametrization trick.
+The encoder part, however, is more delicate to treat. From one hand, it has to be realistic enough to match the true posterior and hence tighten the variational bound. From the other hand, it should be kept simple to make the gradient-based optimization feasible. In fact, one may argue that choosing a proper prior plays an important role in generating high quality representations \cite{VampPrior}. 
+This feasibility of gradient based optimizations has multiple sides: Firstly, it is preferred to have a closed-form expression for the regularization of the posterior to push it closer to the prior. Secondly, since the link between the encoder and the decoder cannot be direct, as the explicit generation of latent codes breaks the differentiability, the encoder should be parametrized such that it can be injected to the latent space through the reparametrization trick \cite{VAE}. 
 
+The standard solution, however, favors more the side of pragmatism by choosing the easy diagonal Gaussian distribution as the encoder's approximate posterior. Being insufficient in practice, a wealth of efforts\footnote{The reader is encouraged to consult good reviews like \cite{tschannen2018recent} that provide overviews of the VAE literature.} have been targeted ever since to address some of its issues like failing to perform amortized inference or not learning very meaningful latent features. As examples of some of these efforts, $\beta$-VAE \cite{higgins2017beta} alters the optimization towards more regularization in order to encourage the latent space to be more factorized in the hope that it would result in disentanglement. Another attempt is the \cite{InfoVAE} which addresses the mismatch between the powerful decoder and the non-flexible encoder by involving more terms to the optimization.
 
+Back to the basic model and before making any such complicating attempts, however, this work proposes a very easy solution that can effectively improve the encoding quality of any relevant  VAE model. Our solution is as pragmatic as the standard VAE encoding and runs as fast, but is much more flexible. Moreover, it is equally compatible with all further attempts to improve the VAE's, e.g., $\beta$-VAE or info-VAE, as we will experimentally validate, since its realization is a drop-in replacement of the standard approximate posterior. 
 
+Next in this paper we briefly review the standard VAE model in section \ref{sec:VAE} while highlighting aspects relevant to our work. Our proposition, the $\rho$-VAE is then introduced in section \ref{sec:proposed}, on which we perform experiments in section \ref{sec:exp}. The paper is finally concluded in section \ref{sec:conclusions}.
 
-\section{The VAE models} \label{sec:VAE}
-Here we briefly review the standard VAE model, highlighting aspects relevant to our work, as well as some of its further developments.
-
+\section{The standard VAE model} \label{sec:VAE}
 In a typical probabilistic model where a latent variable $\mathbf{z} \in \Re^d$ is the underlying factor to generate the observable samples $\mathbf{x}$'s $\in \Re^n$, the standard variational Bayes [?] paradigm is concerned with finding an approximation $q(\mathbf{z})$ for the intractable posterior $p(\mathbf{z}|\mathbf{x})$. This is achieved by minimizing the Kullback-Leibler divergence between these two distributions , i.e., $D_{\text{KL}}\Big[ q(z) || p(z|x) \Big]$. Standard treatments of this quantity, along with its non-negativity property will then amount to the following inequality:
 
 \begin{equation}  \label{eq:VB_ELBO}
 \log(p(\mathbf{x})) \leqslant \mathbb{E}_{q(\mathbf{z})} \Big[ \log(p(\mathbf{x}|\mathbf{z}))  \Big] - D_{\text{KL}}\Big[ q(\mathbf{z}) || p(\mathbf{z}) \Big].
 \end{equation}
 
-\subsection{The standard VAE} \label{subsec:Vanilla_VAE}
 
-Autoencoding variational Bayes \cite{VAE} is then constructing an explicit dependence of the latent variables to the $i^{\text{th}}$ training sample by considering a parametrized distribution $q_{\phi}(\mathbf{z}^{(i)}|\mathbf{x}^{(i)})$ for the approximate posterior, whose construction resembles the encoder part of an autoencoder network with a set of learnable weights $\phi$. Furthermore the training samples can be decoded with $p_{\theta}(\mathbf{x}^{(i)} | \mathbf{z}^{(i)})$, another network with parameters symbolized as $\theta$.
+Autoencoding variational Bayes \cite{VAE} is then constructing an explicit dependence of the latent variables to the $i^{\text{th}}$ training sample by considering a parametrized distribution $q_{\phi}(\mathbf{z}^{(i)}|\mathbf{x}^{(i)})$ for the approximate posterior, whose construction resembles the encoder part of an autoencoder network with a set of learnable weights $\phi$. Furthermore, the training samples can be decoded with $p_{\theta}(\mathbf{x}^{(i)} | \mathbf{z}^{(i)})$, another network with parameters symbolized as $\theta$.
 
 Making this double-sided data dependence more explicit, and by summing over all $N$ training samples results to the following inequality:
 
@@ -109,7 +117,7 @@ This, in fact, is highly relevant for generative modeling as the marginal log-li
 
 During optimization, the first term of the LHS can be considered as a data fidelity term, minimized e.g., in the $\ell_2$ sense, since a natural choice for the decoder is $p_{\theta}(\mathbf{x}^{(i)}|\mathbf{z}^{(i)}) = \mathcal{N} \Big( \big( \mathbf{x}^{(i)}|\mathbf{z}^{(i)} \big) , \sigma^2 \mathrm{I}_n \Big)$, where $\mathrm{I}_n$ is the $n$-dimensional unity matrix.
 
-The second term, from the other hand, can be interpreted as a regularization term, pushing the approximate posterior to a prior imposed on the latent space, most conveniently a simple $p(z) = \mathcal{N}(\mathbf{0}, \mathrm{I}_d)$. Provided that the optimization is successful, and the inequality (\ref{eq:ELBO_VAE}) is tight, one can generate random samples from this prior, pass it through the learned decoder and generate samples (non-trivially) similar to the underlying data.   
+The second term, from the other hand, can be interpreted as a regularization term, pushing the approximate posterior to a prior imposed on the latent space, most conveniently a simple $p(z) = \mathcal{N}(\mathbf{0}, \mathrm{I}_d)$. Provided that the optimization is successful, and the inequality (\ref{eq:vae_ELBO}) is tight, one can generate random samples from this prior, pass it through the learned decoder and generate samples (non-trivially) similar to the underlying data.   
 
 However, the above scenario comes with a major caution: the fact that sampling $\mathbf{z}$ from $q_{\phi}(\mathbf{z} | \mathbf{x})$ is a non-differentiable operation. The work-around for this issue is the wise ``reparametrization trick'', as proposed in \cite{VAE}. 
 
@@ -117,7 +125,7 @@ The idea is to create the required randomness from a fixed distribution $\boldsy
 
 This then limits the practical choices for $\mathrm{C}^{(i)}$ to have analytical Choleskiy decomposition forms, since both $\mathrm{C}^{(i)}$ and $\tilde{\mathrm{C}}^{(i)}$ participate in the optimization simultaneously.
 
-Another issue to address is the calculation of $D_{\text{KL}}\big[ q_{\phi}(\mathbf{z}^{(i)}  | \mathbf{x}^{(i)}) || p(\mathbf{z}) \big]$, which we elaborate slightly more in section \ref{subsec:SOTA}. In order to avoid many practical difficulties, the standard choice is to pick a closed-form expression for it, hence further limiting the choices of $\mathrm{C}^{(i)}$.
+Another issue to address is the calculation of $D_{\text{KL}}\big[ q_{\phi}(\mathbf{z}^{(i)}  | \mathbf{x}^{(i)}) || p(\mathbf{z}) \big]$. While there are several choices (e.g., replacing the KL-divergence with other forms, or the adversarial density ratio trick \cite{nguyen2010estimating}), in order to avoid many practical difficulties, the standard choice is to pick a closed-form expression for it, hence further limiting the choices of $\mathrm{C}^{(i)}$.
 
 While the prior distribution is chosen as $p(z) = \mathcal{N}(\mathbf{0}, \mathrm{I}_d)$, considering the above two constraints, the standard choice widely adopted in many further variants for the sample-wise approximate posterior is to set $\mathrm{C}_{(\mathbf{s})}^{(i)} = \text{diag} \big( \mathbf{s}^{(i)} \big)$. In other words,  $q_{\phi}(\mathbf{z}^{(i)}  | \mathbf{x}^{(i)}) = \mathcal{N} \Big( \boldsymbol{\mu}^{(i)}, \text{diag} \big( \mathbf{s}^{(i)} \big)  \Big)$, a diagonal Gaussian distribution parametrized by the pair$(\boldsymbol{\mu}^{(i)}, \mathbf{s}^{(i)})$.
 
@@ -129,12 +137,6 @@ D_{\text{KL}}\Big[ \mathcal{N} \Big( \boldsymbol{\mu}^{(i)}, \text{diag} \big( \
 where $\mathbf{1}_d$ is the unity vector of dimension $d$, $||\cdot||_2^2$ is the squared $\ell_2$-norm, and $\log \big({\mathbf{s}^{(i)}} \big)$ is applied element-wise.
 
 While this is a very practical choice, we argue in section \ref{sec:proposed} that it is too simplistic, as it disregards any correlation within dimensions.
-
-
-\subsection{Further variations} \label{subsec:SOTA}
-The literature around VAE is immense and still very active. Without aiming for any comprehensive literature review, here we still point out several of its variants.
-
-As categorized in \cite{tschannen2018recent}, VAE variants come in 3 categories.
  
 \section{The $\rho$-VAE}  \label{sec:proposed}
 We saw in section \ref{subsec:Vanilla_VAE} that two considerations limit the choices of approximate posterior: the need for a parametric Choleskiy factorization of its covariance matrix, as well as closed-form expression for the regularization term of (\ref{eq:vae_ELBO}), which basically requires the expression of log-determinant  of the covariance.
@@ -195,13 +197,149 @@ Furthermore, the need for correlation does not solely stem from the natural sign
 
 In other words, to guarantee a successful training, the approximate posterior should have enough capacity to match the unknown and intractable posterior. In VAE models, however, it is usually only ``hoped'' that this will be the case. We believe (albeit without providing quantitative evidence), that accounting for correlation may help reduce this gap.
 
-Next we will show the effectiveness of our proposition. We show that the simple alterations to the standard approach, without the need for any sort of hyper-parameter tuning, will noticeably and consistently improve the performance under all variations considered and for all setups. 
+Next we will show the effectiveness of our proposition. We show that the simple alterations to the standard approach, without the need for any sort of hyper-parameter tuning will noticeably and consistently improve the performance under all variations considered and for all setups. 
 
 \section{Experiments} \label{sec:exp} 
 
+We perform experiments on 4 variants of the VAE and across the mnist[] and the fashion[] databases. For each of these models, we first use the diagonal Gaussian approximate posterior as the baseline and then replace it with our AR(1) proposition. As was explained in section \ref{sec:proposed}, this only changes the reparametrization step, as well as the closed-form expression of the regularizer.
+
+In order to force the network to output correlation factors in the range $-1 < \rho < 1$, we pass the output of the corresponding linear layer (mapping from $\Re^{d'}$ to $\Re$, where $d'$ is the dimension of an intermediate hidden-layer) through the $\tanh(\cdot)$ activation. To ensure positive scaling of the covariance, similar to the standard implementations, we consider the output of the corresponding linear layer (from $\Re^{d'}$ to $\Re$ in our case) as $\log(s)$, and exponentiate it where necessary.\footnote{So instead of the standard linear layer of size $d' \times d$, we have two $d' \times 1$ linear layers.}
+
+Other than these adjustments, we keep every other thing\footnote{For example the dimensions, regularization constants, network architectures, learning rates, epochs, ...} exactly the same. 
+
+Figure \ref{fig:curve_VanillaVAE} shows the loss function, i.e., the lower-bound on the negative log-likelihood (-LHS of (\ref{eq:vae_ELBO})) for the vanilla-, as well as the $\rho$-VAE, where a clear advantage is seen for the latter on both databases.\footnote{Note that our figures show the loss function on the test set starting from the end of the first epoch, where already several mini-batches of optimization have been run. So both variants start from the same loss before starting the optimization and they are measuring the same quantity.} This is then confirmed visually in Fig. \ref{fig:pic_VanillaVAE}, where the samples generated from $\rho$-VAE look much sharper than the baseline. 
+
+%figure---------------------------------------------------------------------------------------
+ \begin{figure}  [!h]
+   \begin{center} 
+\includegraphics[width=1.0\textwidth]{figs/curves/VanillaVAE.pdf}
+
+\end{center}
+\vspace{-.75cm}    
+   \caption{The loss function profile of the test set for the vanilla-VAE and $\rho$-VAE models on (a) mnist and (b) fashion databases.}
+   \label{fig:curve_VanillaVAE}
+   \end{figure}
+%---------------------------------------------------------------------------------------------
 
 
-\bibliographystyle{plain}
+%figure--------------------------------------------------------------------------------------------------------------------------
+ \begin{figure}  [!h]
+   \begin{center} 
+\subcaptionbox{vanilla-VAE (mnist)} {\includegraphics[width=0.47\textwidth]{figs/pics/generation_VanillaVAE_mnist.png}} 
+\subcaptionbox{vanilla-VAE (fashion)} {\includegraphics[width=0.47\textwidth]{figs/pics/generation_VanillaVAE_fashion.png}} 
+
+\subcaptionbox{$\rho$-VAE (mnist)} {\includegraphics[width=0.47\textwidth]{figs/pics/generation_RHO_VanillaVAE_mnist.png}} 
+\subcaptionbox{$\rho$-VAE (fashion)} {\includegraphics[width=0.47\textwidth]{figs/pics/generation_RHO_VanillaVAE_fashion.png}} 
+
+\end{center}
+\vspace{-0.4cm}    
+   \caption{Randomly generated samples from the vanilla-VAE and the $\rho$-VAE models (no cherry-picking of the samples).}
+   \label{fig:pic_VanillaVAE}
+   \end{figure}
+%----------------------------------------------------------------------------------------------------------------------------
+
+
+
+%figure---------------------------------------------------------------------------------------
+ \begin{figure}  [!h]
+   \begin{center} 
+\includegraphics[width=1.0\textwidth]{figs/curves/BETA_VAE.pdf}
+\end{center}
+\vspace{-.75cm}     
+   \caption{The loss function profile of the test set for the $\beta$-VAE and $\rho$-$\beta$-VAE models on (a) mnist and (b) fashion databases.}
+   \label{fig:curve_BETAVAE}
+   \end{figure}
+%---------------------------------------------------------------------------------------------
+
+Figures \ref{fig:curve_BETAVAE} and \ref{fig:pic_BETAVAE} show the loss function profile and the samples generated from the two variants on the $\beta$-VAE framework \cite{higgins2017beta}, respectively. Note that, as argued by the authors, in order to encourage factorization of the latent, the $\beta$-VAE scales the loss function in favor of the regularization term. Here, too, we show a consistent gap of performance in favor of the$\rho-$ variant.\footnote{In fact, we observe in our experiments (not shown here) that the gain in performance is due both to a decreased reconstruction loss, as well as lower KL-divergence, and hence keeping the advantage similar in the $\beta$-VAE case.}
+
+
+
+
+%figure--------------------------------------------------------------------------------------------------------------------------
+ \begin{figure}  [!h]
+   \begin{center} 
+\subcaptionbox{$\beta$-VAE (mnist)} {\includegraphics[width=0.47\textwidth]{figs/pics/generation_BETAVAE_mnist.png}} 
+\subcaptionbox{$\beta$-VAE (fashion)} {\includegraphics[width=0.47\textwidth]{figs/pics/generation_BETAVAE_fashion.png}} 
+
+\subcaptionbox{$\rho$-$\beta$-VAE (mnist)} {\includegraphics[width=0.47\textwidth]{figs/pics/generation_RHO_BETAVAE_mnist.png}} 
+\subcaptionbox{$\rho$-$\beta$-VAE (fashion)} {\includegraphics[width=0.47\textwidth]{figs/pics/generation_RHO_BETAVAE_fashion.png}} 
+
+\end{center}
+\vspace{-0.4cm}    
+   \caption{Randomly generated samples from the $\beta$-VAE and the $\rho$-$\beta$-VAE models (no cherry-picking of the samples).}
+   \label{fig:pic_BETAVAE}
+   \end{figure}
+%----------------------------------------------------------------------------------------------------------------------------
+
+While the above networks have only fully-connected layers, we next perform our comparison on a VAE model with convolutions. This has two convolutional layers with $64$ and $128$ filters of size $4 \times 4 $, and then two fully-connected layers to produce the hidden intermediate layer. From the latent code, then the decoding is done in a symmetric way with transposed convolutions. Again we see clear advantage by the adoption of the AR(1) structure in the network in both figures \ref{fig:curve_CNNVAE} and \ref{fig:pic_CNNVAE}. 
+
+
+%figure---------------------------------------------------------------------------------------
+ \begin{figure}  [!h]
+   \begin{center} 
+\includegraphics[width=1.0\textwidth]{figs/curves/CNN_VAE.pdf}
+\end{center}
+\vspace{-.75cm}   
+   \caption{The loss function profile of the test set for the CNN-VAE and $\rho$-CNN-VAE models on (a) mnist and (b) fashion databases.}
+   \label{fig:curve_CNNVAE}
+   \end{figure}
+%---------------------------------------------------------------------------------------------
+
+
+%figure--------------------------------------------------------------------------------------------------------------------------
+ \begin{figure}  [!h]
+   \begin{center} 
+\subcaptionbox{CNN-VAE (mnist)} {\includegraphics[width=0.47\textwidth]{figs/pics/generation_CNN_VAE_mnist.png}} 
+\subcaptionbox{CNN-VAE (fashion)} {\includegraphics[width=0.47\textwidth]{figs/pics/generation_CNN_VAE_fashion.png}} 
+
+\subcaptionbox{$\rho$-CNN-VAE (mnist)} {\includegraphics[width=0.47\textwidth]{figs/pics/generation_RHO_CNN_VAE_mnist.png}} 
+\subcaptionbox{$\rho$-CNN-VAE (fashion)} {\includegraphics[width=0.47\textwidth]{figs/pics/generation_RHO_CNN_VAE_fashion.png}} 
+
+\end{center}
+\vspace{-0.4cm}    
+   \caption{Randomly generated samples from the CNN-VAE and the $\rho$-CNN-VAE models (no cherry-picking of the samples).}
+   \label{fig:pic_CNNVAE}
+   \end{figure}
+%----------------------------------------------------------------------------------------------------------------------------
+
+
+
+%figure---------------------------------------------------------------------------------------
+ \begin{figure}  [!h]
+   \begin{center} 
+\includegraphics[width=1.0\textwidth]{figs/curves/INFO_VAE.pdf}
+\end{center}
+\vspace{-.75cm}  
+   \caption{The loss function profile of the test set for the info-VAE and $\rho$-info-VAE models on (a) mnist and (b) fashion databases.}
+   \label{fig:curve_INFOVAE}
+   \end{figure}
+%---------------------------------------------------------------------------------------------
+
+
+%figure--------------------------------------------------------------------------------------------------------------------------
+ \begin{figure}  [!h]
+   \begin{center} 
+\subcaptionbox{info-VAE (mnist)} {\includegraphics[width=0.47\textwidth]{figs/pics/generation_INFO_VAE_mnist.png}} 
+\subcaptionbox{info-VAE (fashion)} {\includegraphics[width=0.47\textwidth]{figs/pics/generation_INFO_VAE_fashion.png}} 
+
+\subcaptionbox{$\rho$-info-VAE (mnist)} {\includegraphics[width=0.47\textwidth]{figs/pics/generation_RHO_INFO_VAE_mnist.png}} 
+\subcaptionbox{$\rho$-info-VAE (fashion)} {\includegraphics[width=0.47\textwidth]{figs/pics/generation_RHO_INFO_VAE_fashion.png}} 
+
+\end{center}
+\vspace{-0.4cm}    
+   \caption{Randomly generated samples from the info-VAE and the $\rho$-info-VAE models, both having DC-GAN encoding and decoding (no cherry-picking of the samples).}
+   \label{fig:pic_INFOVAE}
+   \end{figure}
+%----------------------------------------------------------------------------------------------------------------------------
+
+As for the last experiment, we take our $\rho$-parametrization and plug it into the info-VAE model \cite{InfoVAE}. This has a more complicated optimization that further involves the aggregated approximate posterior, for which we use the DC-GAN \cite{radford2015unsupervised}, as proposed by the authors for the two variants. Again we observe more successful training in Figure \ref{fig:curve_INFOVAE}, and more realistic samples in Figure \ref{fig:pic_INFOVAE} for our proposed $\rho$ variant. 
+
+
+\section{Conclusions} \label{sec:conclusions}
+We proposed to replace the standard and ubiquitous parametrization of the approximate posterior within VAE models as diagonal Gaussian with the  much more flexible AR(1) Gaussian distribution. We argued that this choice, not only does not add any complexity or issue to the optimization, but it even has less number of parameters and can be easily be integrated in other VAE models in a plug-and-play manner. Being able to let correlation to propagate within the approximate posterior, we argued that it might match better to the true posterior. Our proposition showed consistent improvement to the quality of image generation, both quantitatively and visually with sharper and more realistic samples. 
+
+\bibliographystyle{unsrt}
 
 \bibliography{Bibliography}
 
