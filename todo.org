@@ -1,14 +1,32 @@
+* General Testing
+[ ] Activation vs regularization on the re-parameterization
+[ ] Test cifar dataset
+[ ] Add 2d cluster demo again, and see improvements for rho-based models
+[ ] Add chairs
+[ ] Test denoising / contracting performance??
+[ ] Try a Resnet-like based encoder
+
+
 * Code fixes
 [X] Fix hacks
 [X] Expand the data loader
 [X] Fix the num_class, input_shape hack
+[ ] Write out generator examples at end of run
+[ ] Switch to snakemake instead of batch scripts
+[ ] Reintroduce visdom with a switch
 
 
-* bugs DCGAN model
+* Bugs DCGAN model
 [ ] Fix num class again, pass, the parameter nicely
 [X] Fix fashion MNIST, NaN on BCE
 [X] UserWarning: Using a target size (torch.Size([128, 784])) that is different to the input size (torch.Size([128, 1, 28, 28])) is deprecated. Please ensure they have the same size.
   BCE = F.binary_cross_entropy(recon_x, x.view(-1, data_dim), reduction='sum')
+
+
+* Strategy
+[ ] Investigate flows
+[ ] Other rho matrices / inverse weishart distribution
+[ ] Bernouilli reparam
 
 
 * Code todo
@@ -30,10 +48,8 @@
 [ ] Better orchestration
 
 
-* Tests
-[ ] test cifar dataset
-[ ] Add 2d cluster demo again, and see improvements for rho-based models
-
 
 * Article
-[ ]
+[ ] Push to arxiv
+[ ] Do a release on github
+
