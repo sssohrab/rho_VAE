@@ -369,6 +369,7 @@ class CNN_VAE(nn.Module):
 
         logvar = F.elu(self.fc21(x))
         logvar = self.fc22(logvar)
+        logvar = torch.log(torch.clamp(logvar, 0.02))
 
         return mu, logvar
 
@@ -428,7 +429,7 @@ class RHO_CNN_VAE(nn.Module):
         mu = F.elu(self.fc_mu_1(x))
         mu = self.fc_mu_2(mu)
 
-        log_s = F.elu(self.fc_logs_1(x))
+        log_s = torch.log(torch.clamp(F.elu(self.fc_logs_1(x)), 0.02))
         log_s = self.fc_logs_2(log_s)
 
         rho = F.elu(self.fc_rho_1(x))

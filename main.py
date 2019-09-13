@@ -26,7 +26,7 @@ parser.add_argument('--rho', action='store_true', default=False,
 # Model parameters
 
 parser.add_argument('--z-dim', type=int, default=10, metavar='N',
-                    help='VAE latent size (default: 20')
+                    help='VAE latent size (default: 10')
 
 parser.add_argument('--out-channels', type=int, default=64, metavar='N',
                     help='VAE 2D conv channel output (default: 64')
@@ -38,6 +38,7 @@ parser.add_argument('--encoder-size', type=int, default=1024, metavar='N',
 # data loader parameters
 parser.add_argument('--dataset-name', type=str, default='mnist',
                     help='Name of dataset (default: MNIST')
+
 parser.add_argument('--batch-size', type=int, default=128, metavar='N',
                     help='input training batch-size')
 
@@ -225,7 +226,7 @@ for epoch in range(1, num_epochs + 1):
                         'state_dict': model.state_dict(),
                         'val_loss': v_loss
                         },
-                        'models/' + args.uid + args.dataset_name + '.pt')
+                        'models/' + args.uid + '_' + args.dataset_name + '.pt')
 
 # Write out data to dat file
 fp = 'graphs/'
@@ -235,3 +236,4 @@ y = np.array(val_losses).astype(float).reshape(-1)
 x = np.arange(len(val_losses))
 
 np.savetxt(fp + fname, np.transpose([x, y]), fmt='%8f', delimiter='   ')
+
