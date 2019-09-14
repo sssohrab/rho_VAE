@@ -1,4 +1,4 @@
-# $\rho$-VAE:
+# $$ \mbox{\Huge $\rho$ } $$-VAE:
 
 An autoregresive parametrization of the approximate posterior in VAE models.
 
@@ -22,5 +22,5 @@ $$ D_{\text{KL}}\Big[ \mathcal{N} \Big( \boldsymbol{\mu}^{(i)}, \text{diag} \big
 
 which is very easy to implement, e.g., as ``KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())`` in PyTorch.
 
-### $\rho$-VAE way:
+### $$ \mbox{\large $\rho$ } $$-VAE way:
 
