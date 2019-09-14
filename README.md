@@ -1,4 +1,4 @@
-# <img src="/tex/6dec54c48a0438a5fcde6053bdb9d712.svg?invert_in_darkmode&sanitize=true" align=middle width=8.49888434999999pt height=14.15524440000002pt/>-VAE:
+# <p align="center"><img src="/tex/af21991ce8cc30e6c12f0a7f1f8c966a.svg?invert_in_darkmode&sanitize=true" align=middle width=20.65506465pt height=25.5616482pt/></p>-VAE:
 
 An autoregresive parametrization of the approximate posterior in VAE models.
 
@@ -22,5 +22,5 @@ With this standard diagonal Gaussian choice, this can be derived as:
 
 which is very easy to implement, e.g., as ``KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())`` in PyTorch.
 
-### <img src="/tex/6dec54c48a0438a5fcde6053bdb9d712.svg?invert_in_darkmode&sanitize=true" align=middle width=8.49888434999999pt height=14.15524440000002pt/>-VAE way:
+### <p align="center"><img src="/tex/915c66298c3571cbe20e64733b67efa6.svg?invert_in_darkmode&sanitize=true" align=middle width=9.9622479pt height=12.328767pt/></p>-VAE way:
 
