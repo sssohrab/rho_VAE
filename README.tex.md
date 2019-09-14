@@ -60,7 +60,8 @@ As for the KL-divergence term, this also comes in closed-form as:
 $$D_{\text{KL}}\Big[ \mathcal{N} \Big( \boldsymbol{\mu}^{(i)}, \mathrm{C}_{(\rho,s)} \Big)    \Big|\Big|  \mathcal{N} \big( \mathbf{0}, \mathrm{I}_d \big)  \Big] = \frac{1}{2} \Big[
 \big|\big| \boldsymbol{\mu}^{(i)} \big|\big|_2^2 + d(s-1-\log{(s)})  - (d-1)\log{(1 - \rho^2)}  
 \Big],$$
-which can be implemented again very easily as: ``KLD = 0.5 * ( torch.sum(mu.pow(2)) + - z_dim * logs - (z_dim - 1) * torch.log(1 - rho**2) +  z_dim * (logs.exp()-1)).mean() ``.
+which can be implemented again very easily as: 
+``KLD = 0.5 * ( torch.sum(mu.pow(2)) + - z_dim * logs - (z_dim - 1) * torch.log(1 - rho**2) +  z_dim * (logs.exp()-1)).mean() `` in PyTorch.
 
 
 ## A drop-in replacement:
