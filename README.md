@@ -43,8 +43,9 @@ which has structure similar to the coariance matrix itself.
 As for the KL-divergence term, this also comes in closed-form as:
 
 <p align="center"><img src="/tex/0588651ba3dd936f2b7c42c0efb3f6fe.svg?invert_in_darkmode&sanitize=true" align=middle width=636.8444016pt height=32.990165999999995pt/></p>
-which can be implemented again very easily as: 
-``KLD = 0.5 * ( torch.sum(mu.pow(2)) + - z_dim * logs - (z_dim - 1) * torch.log(1 - rho**2) +  z_dim * (logs.exp()-1)).mean() `` in PyTorch.
+which can be implemented again very easily as:  
+ 
+ ``KLD = 0.5 * ( torch.sum(mu.pow(2)) + - z_dim * logs - (z_dim - 1) * torch.log(1 - rho**2) +  z_dim * (logs.exp()-1)).mean() `` in PyTorch.
 
 
 ## A drop-in replacement:
