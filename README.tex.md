@@ -128,6 +128,7 @@ rho-VAE:
 
 Here is how to cite this work:
 
+```
 @misc{ferdowsi2019vae,
     title={$ρ$-VAE: Autoregressive parametrization of the VAE encoder},
     author={Sohrab Ferdowsi and Maurits Diephuis and Shideh Rezaeifar and Slava Voloshynovskiy},
@@ -136,4 +137,4 @@ Here is how to cite this work:
     archivePrefix={arXiv},
     primaryClass={cs.LG}
 }
-
+```
