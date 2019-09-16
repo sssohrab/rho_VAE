@@ -1,12 +1,12 @@
 # rho_VAE:
 
-An autoregresive parametrization of the approximate posterior in VAE models.
+A repo dedicated to our paper [<img src="/tex/6dec54c48a0438a5fcde6053bdb9d712.svg?invert_in_darkmode&sanitize=true" align=middle width=8.49888434999999pt height=14.15524440000002pt/>-VAE: Autoregressive parametrization of the VAE encoder](https://arxiv.org/abs/1909.06236)
 
 ## Main idea:
 
 We replace the usual diagonal Gaussian parametrization of the approximate posterior in VAE models with autoregressive Gaussian.
 
-### The standard way:
+### The usual way:
 
 In standard VAE models, any input training sample is inducing an approximate posterior with a diagonal Gaussian distribution, i.e., <img src="/tex/7c0ac43a79518dbb936783fed0fd647e.svg?invert_in_darkmode&sanitize=true" align=middle width=221.25256725pt height=29.190975000000005pt/> to the latent space. This is realized by a linear layer that is outputing the mean vector <img src="/tex/7c2da1f3aeba73f324120131749dd5ff.svg?invert_in_darkmode&sanitize=true" align=middle width=26.561109299999988pt height=29.190975000000005pt/> of this distribution for the <img src="/tex/f802120f62e600587af32e9b7fb784d7.svg?invert_in_darkmode&sanitize=true" align=middle width=18.06055514999999pt height=27.91243950000002pt/> sample, and another linear layer that is creating the <img src="/tex/9d3a9e72dd6924b6c405e3cfb9dd8ced.svg?invert_in_darkmode&sanitize=true" align=middle width=46.354078649999984pt height=29.190975000000005pt/>, i.e., the logarithm of the diagonal elements of the covariance matrix for the <img src="/tex/f802120f62e600587af32e9b7fb784d7.svg?invert_in_darkmode&sanitize=true" align=middle width=18.06055514999999pt height=27.91243950000002pt/> sample.
 
@@ -18,9 +18,7 @@ From the other hand, we also need to calculate the KL-divergence between this ap
 
 With this standard diagonal Gaussian choice, this can be derived as:
 
-<p align="center"><img src="/tex/29cb7a0e511d78491a49662219c01387.svg?invert_in_darkmode&sanitize=true" align=middle width=566.5614108pt height=32.990165999999995pt/></p>
-
-which is very easy to implement, e.g., as ``KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())`` in PyTorch.
+<p align="center"><img src="/tex/37f2cfd539fca3b14a89cad02ba7bf30.svg?invert_in_darkmode&sanitize=true" align=middle width=566.5614108pt height=32.990165999999995pt/></p>
 
 However, while very handy, this way of parametrization may be too simple to approximate the posterior. Note that it does not allow any correlation within the dimensions of the posterior. It just lets each dimension scale arbitrarily and independent of the other dimensions, a freedom which may even be not very necessary, since variances in the pixel domain are usually within the same range.
 
@@ -42,14 +40,83 @@ which has structure similar to the coariance matrix itself.
   
 As for the KL-divergence term, this also comes in closed-form as:
 
-<p align="center"><img src="/tex/0588651ba3dd936f2b7c42c0efb3f6fe.svg?invert_in_darkmode&sanitize=true" align=middle width=636.8444016pt height=32.990165999999995pt/></p>
-which can be implemented again very easily as:  
- 
- ``KLD = 0.5 * ( torch.sum(mu.pow(2)) + - z_dim * logs - (z_dim - 1) * torch.log(1 - rho**2) +  z_dim * (logs.exp()-1)).mean() `` in PyTorch.
+<p align="center"><img src="/tex/92f49a8db064a8cff8343c8e605c2d2b.svg?invert_in_darkmode&sanitize=true" align=middle width=636.8444016pt height=32.990165999999995pt/></p>
 
 
-## A drop-in replacement:
+## In essence: a drop-in replacement for the usual encoder:
+
+As far as the implementation of our idea is concerned, concretely, we only make the following 3 changes:
+
+1. Replacing the fully-connected linear layer of size ``(h_sim,z_dim)`` that outputs ``logvar`` with two linear layers of size ``(h_dim,1)``. The first one is passed through a ``tanh`` non-linearity anf outputs the correlation coefficient ``rho``, and the second one (without any non-linearity) is outputing the logarithm of the scaling factor, i.e., ``log_s``.
+
+2. Changing the reparametrization function from 
+
+`` 
+def reparameterize(self, mu, logvar):
+    std = torch.exp(0.5*logvar)
+    eps = torch.randn_like(std)
+    z_q = mu + eps*std
+    return z_q
+       
+``
+
+to:
+
+``
+def reparameterize(self, mu, rho, logs):
+
+    z_q = torch.randn_like(rho).view(-1,1) * torch.sqrt(logs.exp())
+    for j in range(1,z_dim):
+        addenum = z_q[:,-1].view(-1,1)  + torch.randn_like(rho).view(-1,1) * torch.sqrt(logs.exp())
+        z_q = torch.cat(( z_q, addenum ),1)        
+    z_q  = z_q + mu  
+    return z_q
+``
+Note that this is equivalent to generation by matrix-vector multiplication of the choleskiy form above with the vector ``eps``. The reason we chose this direct form is that Toeplitz matrices are not yet implemented in PyTorch and we need a for-loop to ralize the AR(1) process in practice. This, however, does not bring any slow-down and we notice that the ``rho_VAE`` runs as fast as the baseline.
+
+3. Changing the Kulback-Leibler divergence term in the loss from
+
+``KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp()) ``
+
+to: 
+
+``KLD = 0.5 * ( torch.sum(mu.pow(2)) + - z_dim * logs - (z_dim - 1) * torch.log(1 - rho**2) +  z_dim * (logs.exp()-1)).mean()``.
+
+Note that these are exactly equivalent quantities that have the same range. Only the first one is valid when the approximate posterior is diagonal and the second one is valid when it is AR(1).
+
+
+These 3 changes can be applied in a plug-and-play manner, meaning wherever relevant, replacing the usual way with this <img src="/tex/6dec54c48a0438a5fcde6053bdb9d712.svg?invert_in_darkmode&sanitize=true" align=middle width=8.49888434999999pt height=14.15524440000002pt/>-way is expected to produce better results. So no parameters to tune!
+
 
 ## Some generated samples:
 
+Here are some samples generated after the above changes, while keeping all other things the same:
+
+With the vanilla-VAE model and on mnist:
+
+![vanilla-VAE](paper/figs/VanillaVAE_mnist.png)
+
+![rho-VAE](paper/figs/RHO_VanillaVAE_mnist.png)
+
+and on fashion-mnist database:
+
+![vanilla-VAE](paper/figs/VanillaVAE_fashion.png)
+
+![rho-VAE](paper/figs/RHO_VanillaVAE_fashion.png)
+
+
 ## Citation:
+
+Here is how to cite this work:
+
+``
+@misc{ferdowsi2019vae,
+    title={$ρ$-VAE: Autoregressive parametrization of the VAE encoder},
+    author={Sohrab Ferdowsi and Maurits Diephuis and Shideh Rezaeifar and Slava Voloshynovskiy},
+    year={2019},
+    eprint={1909.06236},
+    archivePrefix={arXiv},
+    primaryClass={cs.LG}
+}
+
+``
