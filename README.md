@@ -51,27 +51,23 @@ As far as the implementation of our idea is concerned, concretely, we only make 
 
 2. Changing the reparametrization function from 
 
-`` 
-def reparameterize(self, mu, logvar):
+``def reparameterize(self, mu, logvar):
     std = torch.exp(0.5*logvar)
     eps = torch.randn_like(std)
     z_q = mu + eps*std
-    return z_q
-       
-``
+    return z_q``
 
 to:
 
-``
-def reparameterize(self, mu, rho, logs):
+``def reparameterize(self, mu, rho, logs):
 
     z_q = torch.randn_like(rho).view(-1,1) * torch.sqrt(logs.exp())
     for j in range(1,z_dim):
         addenum = z_q[:,-1].view(-1,1)  + torch.randn_like(rho).view(-1,1) * torch.sqrt(logs.exp())
         z_q = torch.cat(( z_q, addenum ),1)        
     z_q  = z_q + mu  
-    return z_q
-``
+    return z_q ``
+
 Note that this is equivalent to generation by matrix-vector multiplication of the choleskiy form above with the vector ``eps``. The reason we chose this direct form is that Toeplitz matrices are not yet implemented in PyTorch and we need a for-loop to ralize the AR(1) process in practice. This, however, does not bring any slow-down and we notice that the ``rho_VAE`` runs as fast as the baseline.
 
 3. Changing the Kulback-Leibler divergence term in the loss from
@@ -92,16 +88,18 @@ These 3 changes can be applied in a plug-and-play manner, meaning wherever relev
 
 Here are some samples generated after the above changes, while keeping all other things the same:
 
-With the vanilla-VAE model and on mnist:
+On mnist,
 
+Vanilla-VAE:
 ![vanilla-VAE](paper/figs/VanillaVAE_mnist.png)
-
+rho-VAE:
 ![rho-VAE](paper/figs/RHO_VanillaVAE_mnist.png)
 
-and on fashion-mnist database:
+and on fashion-mnist,
 
+Vanilla-VAE:
 ![vanilla-VAE](paper/figs/VanillaVAE_fashion.png)
-
+rho-VAE:
 ![rho-VAE](paper/figs/RHO_VanillaVAE_fashion.png)
 
 
@@ -109,14 +107,11 @@ and on fashion-mnist database:
 
 Here is how to cite this work:
 
-``
-@misc{ferdowsi2019vae,
+``@misc{ferdowsi2019vae,
     title={$ρ$-VAE: Autoregressive parametrization of the VAE encoder},
     author={Sohrab Ferdowsi and Maurits Diephuis and Shideh Rezaeifar and Slava Voloshynovskiy},
     year={2019},
     eprint={1909.06236},
     archivePrefix={arXiv},
     primaryClass={cs.LG}
-}
-
-``
+}``
