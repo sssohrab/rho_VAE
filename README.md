@@ -66,7 +66,7 @@ def reparameterize(self, mu, rho, logs):
 
     z_q = torch.randn_like(rho).view(-1,1) * torch.sqrt(logs.exp())
     for j in range(1,z_dim):
-        addenum = z_q[:,-1].view(-1,1)  + torch.randn_like(rho).view(-1,1) * torch.sqrt(logs.exp())
+        addenum = rho * z_q[:,-1].view(-1,1)  + torch.randn_like(rho).view(-1,1) * torch.sqrt(logs.exp())
         z_q = torch.cat(( z_q, addenum ),1)        
     z_q  = z_q + mu  
     return z_q 
@@ -80,7 +80,7 @@ Note that this is equivalent to generation by matrix-vector multiplication of th
 
 to: 
 
-``KLD = 0.5 * ( torch.sum(mu.pow(2)) + - z_dim * logs - (z_dim - 1) * torch.log(1 - rho**2) +  z_dim * (logs.exp()-1)).mean()``.
+``KLD = 0.5 * ( torch.sum(mu.pow(2)) + - z_dim * logs - (z_dim - 1) * torch.log(1 - rho**2 + 1e-7) +  z_dim * (logs.exp()-1)).mean()``.
 
 Note that these are exactly equivalent quantities that have the same range. Only the first one is valid when the approximate posterior is diagonal and the second one is valid when it is AR(1).
 
